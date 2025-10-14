@@ -12,13 +12,14 @@ import time
 class QueryPanel(ctk.CTkFrame):
     """Query panel with SQL editor and AI assistant"""
     
-    def __init__(self, parent, execute_callback, ai_callback, results_callback=None):
+    def __init__(self, parent, execute_callback, ai_callback, results_callback=None, schema_browser=None):
         super().__init__(parent)
         
         # Callbacks
         self.execute_callback = execute_callback
         self.ai_callback = ai_callback  
         self.results_callback = results_callback  # Callback to display results in main window
+        self.schema_browser = schema_browser  # Reference to schema browser for saved queries
         
         # Current state
         self.current_results = []
@@ -160,6 +161,7 @@ class QueryPanel(ctk.CTkFrame):
         # Bind events
         self.query_text.bind("<Control-Return>", lambda e: self.execute_query())
         self.query_text.bind("<F5>", lambda e: self.execute_query())
+        self.query_text.bind("<Button-3>", self.show_context_menu)  # Right-click
         
         # Add some sample placeholder text
         sample_query = "-- Welcome to PgWarp Query Tool\n-- Write your SQL queries here\n-- Press Ctrl+Enter or F5 to execute\n-- Use the AI assistant above to generate queries\n\nSELECT version();"
@@ -388,3 +390,52 @@ class QueryPanel(ctk.CTkFrame):
         
         # Optionally restore original query after execution
         # (you might want to ask user about this)
+    
+    def show_context_menu(self, event):
+        """Show context menu on right-click"""
+        # Create context menu
+        context_menu = tk.Menu(self, tearoff=0)
+        
+        # Check if there's a selection
+        selected_text = self.get_selected_text()
+        
+        if selected_text:
+            context_menu.add_command(
+                label="Execute Selected",
+                command=self.execute_selected
+            )
+            context_menu.add_command(
+                label="Save Selected as Saved Query",
+                command=lambda: self.save_selection_as_query()
+            )
+            context_menu.add_separator()
+        
+        context_menu.add_command(label="Execute All", command=self.execute_query)
+        context_menu.add_command(label="Format Query", command=self.format_query)
+        context_menu.add_separator()
+        context_menu.add_command(label="Clear", command=self.clear_query)
+        context_menu.add_separator()
+        context_menu.add_command(label="Cut", command=lambda: self.query_text.event_generate("<<Cut>>"))
+        context_menu.add_command(label="Copy", command=lambda: self.query_text.event_generate("<<Copy>>"))
+        context_menu.add_command(label="Paste", command=lambda: self.query_text.event_generate("<<Paste>>"))
+        
+        try:
+            context_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            context_menu.grab_release()
+    
+    def save_selection_as_query(self):
+        """Save selected text as a saved query"""
+        selected_text = self.get_selected_text().strip()
+        if not selected_text:
+            messagebox.showwarning("No Selection", "Please select the SQL text to save")
+            return
+        
+        if self.schema_browser:
+            self.schema_browser.save_selected_query(selected_text)
+        else:
+            messagebox.showwarning("Feature Not Available", "Saved queries feature is not available")
+    
+    def set_schema_browser(self, schema_browser):
+        """Set reference to schema browser"""
+        self.schema_browser = schema_browser

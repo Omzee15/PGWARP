@@ -193,9 +193,8 @@ class PgWarpApp(ctk.CTk):
         self.left_frame = ctk.CTkFrame(self.main_paned, width=350, fg_color="#E8DFD0")
         self.main_paned.add(self.left_frame, width=350, minsize=280)
         
-        # Schema browser
-        self.schema_browser = SchemaBrowser(self.left_frame, self.on_table_select)
-        self.schema_browser.pack(fill="both", expand=True, padx=8, pady=8)
+        # Schema browser (will be fully initialized after query panel)
+        self.schema_browser = None
         
         # Right panel - Query and results
         self.right_paned = tk.PanedWindow(self.main_paned, orient=tk.VERTICAL, sashrelief=tk.RAISED, sashwidth=6)
@@ -220,9 +219,22 @@ class PgWarpApp(ctk.CTk):
             self.notebook.tab("Query Tool"), 
             self.execute_query_callback,
             self.ai_generate_callback,
-            self.display_results_callback
+            self.display_results_callback,
+            None  # Schema browser will be set after creation
         )
         self.query_panel.pack(fill="both", expand=True)
+        
+        # Now create schema browser with query callback
+        self.schema_browser = SchemaBrowser(
+            self.left_frame, 
+            self.on_table_select,
+            self.on_saved_query_select,
+            self.ai_assistant
+        )
+        self.schema_browser.pack(fill="both", expand=True, padx=8, pady=8)
+        
+        # Link query panel to schema browser
+        self.query_panel.set_schema_browser(self.schema_browser)
         
         # PSQL terminal tab
         self.notebook.add("PSQL Terminal")
@@ -776,6 +788,12 @@ Built with Python, CustomTkinter, and LangChain.
         """Handle table selection from schema browser"""
         if hasattr(self.query_panel, 'insert_table_name'):
             self.query_panel.insert_table_name(table_name)
+    
+    def on_saved_query_select(self, query_text: str):
+        """Handle saved query selection from schema browser"""
+        if hasattr(self.query_panel, 'set_query'):
+            self.query_panel.set_query(query_text)
+            self.update_status("Loaded saved query")
     
     def update_status(self, message: str):
         """Update status bar message"""

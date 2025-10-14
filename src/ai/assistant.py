@@ -37,6 +37,25 @@ class SQLOutputParser:
         # Clean up the query
         text = text.strip()
         
+        # Remove leading comments that might interfere with query execution
+        lines = text.split('\n')
+        cleaned_lines = []
+        found_sql = False
+        
+        for line in lines:
+            stripped_line = line.strip()
+            # Skip leading comment lines (-- or /* */)
+            if not found_sql:
+                if stripped_line.startswith('--') or stripped_line.startswith('/*'):
+                    continue
+                elif stripped_line:  # Found first non-comment, non-empty line
+                    found_sql = True
+                    cleaned_lines.append(line)
+            else:
+                cleaned_lines.append(line)
+        
+        text = '\n'.join(cleaned_lines).strip()
+        
         # Ensure the query ends with semicolon
         if not text.endswith(';'):
             text += ';'
@@ -75,12 +94,25 @@ INSTRUCTIONS:
 2. Use proper table and column names from the provided schema
 3. Include appropriate JOINs when querying multiple tables
 4. Use proper PostgreSQL syntax and functions
-5. Add comments to explain complex parts of the query
-6. If the request is ambiguous, make reasonable assumptions
-7. If the request cannot be fulfilled with the available schema, explain why
-8. Always return valid SQL that can be executed
+5. If the request is ambiguous, make reasonable assumptions
+6. If the request cannot be fulfilled with the available schema, explain why
+7. Always return valid SQL that can be executed
+
+IMPORTANT FORMATTING RULES:
+- DO NOT start the query with comments (no -- or /* at the beginning)
+- Start directly with the SQL command (SELECT, INSERT, UPDATE, etc.)
+- You can add inline comments AFTER the query if needed to explain
+- The very first line must be executable SQL, not a comment
+- Remove any introductory text or explanations before the query
 
 Return ONLY the SQL query (or explanation if query cannot be generated), no additional text or formatting.
+
+CORRECT FORMAT:
+SELECT * FROM users WHERE active = true;
+
+INCORRECT FORMAT:
+-- Get all active users
+SELECT * FROM users WHERE active = true;
 """
     
     def set_database_schema(self, schema: Dict[str, Any]):
@@ -313,3 +345,55 @@ Provide specific suggestions with improved query examples if applicable.
             summary_parts.append(f"Views: {view_count}")
         
         return "\n".join(summary_parts)
+    
+    def generate_query_title(self, sql_query: str) -> str:
+        """Generate a concise title for a SQL query (1-4 words)"""
+        try:
+            title_prompt = f"""
+Generate a concise title for this SQL query. The title should be 1-4 words maximum and describe what the query does.
+
+SQL Query:
+{sql_query}
+
+Rules:
+- Use 1-4 words only
+- Be descriptive and clear
+- Use title case
+- No punctuation at the end
+- Examples: "User List", "Sales Report", "Top Products", "Customer Count"
+
+Return ONLY the title, nothing else.
+"""
+            
+            response = self.model.generate_content(title_prompt)
+            title = response.text.strip()
+            
+            # Clean up the title
+            title = title.strip('"').strip("'").strip()
+            
+            # Ensure it's not too long (fallback if AI doesn't follow instructions)
+            words = title.split()
+            if len(words) > 4:
+                title = ' '.join(words[:4])
+            
+            # If still too long, truncate to 50 chars
+            if len(title) > 50:
+                title = title[:47] + "..."
+            
+            logger.info(f"Generated query title: {title}")
+            return title
+            
+        except Exception as e:
+            logger.error(f"Failed to generate query title: {str(e)}")
+            # Return a default title based on query type
+            query_upper = sql_query.strip().upper()
+            if query_upper.startswith('SELECT'):
+                return "Select Query"
+            elif query_upper.startswith('INSERT'):
+                return "Insert Query"
+            elif query_upper.startswith('UPDATE'):
+                return "Update Query"
+            elif query_upper.startswith('DELETE'):
+                return "Delete Query"
+            else:
+                return "SQL Query"
