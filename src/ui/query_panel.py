@@ -34,7 +34,7 @@ class QueryPanel(ctk.CTkFrame):
         self.grid_rowconfigure(1, weight=1)  # Query editor
         
         # Top toolbar
-        toolbar_frame = ctk.CTkFrame(self, height=60)
+        toolbar_frame = ctk.CTkFrame(self, height=60, fg_color="#E8DFD0")
         toolbar_frame.grid(row=0, column=0, sticky="ew", padx=8, pady=8)
         toolbar_frame.grid_columnconfigure(2, weight=1)
         
@@ -138,20 +138,22 @@ class QueryPanel(ctk.CTkFrame):
         query_h_scroll.grid(row=1, column=0, sticky="ew", padx=(2, 0))
         
         # Query info frame
-        info_frame = ctk.CTkFrame(self, height=35)
+        info_frame = ctk.CTkFrame(self, height=35, fg_color="#E8DFD0")
         info_frame.grid(row=2, column=0, sticky="ew", padx=8, pady=(0, 8))
         
         self.query_info = ctk.CTkLabel(
             info_frame, 
             text="Ready to execute queries",
-            font=ctk.CTkFont(size=12)
+            font=ctk.CTkFont(size=12),
+            text_color="#3E2723"
         )
         self.query_info.pack(side="left", padx=15, pady=8)
         
         self.execution_time = ctk.CTkLabel(
             info_frame, 
             text="", 
-            font=ctk.CTkFont(size=12)
+            font=ctk.CTkFont(size=12),
+            text_color="#3E2723"
         )
         self.execution_time.pack(side="right", padx=15, pady=8)
         

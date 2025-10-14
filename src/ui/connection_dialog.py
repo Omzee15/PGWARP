@@ -60,7 +60,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         self.scrollable_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
         # Main frame inside scrollable frame
-        main_frame = ctk.CTkFrame(self.scrollable_frame)
+        main_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="#F5EFE7")
         main_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Title
@@ -72,7 +72,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         title_label.pack(pady=(0, 20))
         
         # Saved connections section
-        saved_frame = ctk.CTkFrame(main_frame)
+        saved_frame = ctk.CTkFrame(main_frame, fg_color="#E8DFD0")
         saved_frame.pack(fill="x", pady=(0, 25))
         
         saved_label = ctk.CTkLabel(
@@ -83,7 +83,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         saved_label.pack(pady=(15, 10))
         
         # Connections listbox frame
-        listbox_frame = ctk.CTkFrame(saved_frame)
+        listbox_frame = ctk.CTkFrame(saved_frame, fg_color="#E8DFD0")
         listbox_frame.pack(fill="x", padx=15, pady=(0, 15))
         
         # Create listbox with scrollbar
@@ -112,7 +112,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         self.connections_listbox.bind("<Double-Button-1>", self.on_connection_double_click)
         
         # Connection buttons
-        conn_buttons_frame = ctk.CTkFrame(saved_frame)
+        conn_buttons_frame = ctk.CTkFrame(saved_frame, fg_color="#E8DFD0")
         conn_buttons_frame.pack(fill="x", padx=15, pady=(0, 15))
         
         self.connect_btn = ctk.CTkButton(
@@ -163,7 +163,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         new_conn_label.pack(pady=(0, 15))
         
         # Connection form
-        form_frame = ctk.CTkFrame(main_frame)
+        form_frame = ctk.CTkFrame(main_frame, fg_color="#E8DFD0")
         form_frame.pack(fill="x", pady=(0, 20))
         
         # Connection name
@@ -203,7 +203,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         self.password_entry.pack(fill="x", padx=15, pady=(0, 15))
         
         # Dialog buttons
-        buttons_frame = ctk.CTkFrame(main_frame)
+        buttons_frame = ctk.CTkFrame(main_frame, fg_color="#F5EFE7")
         buttons_frame.pack(fill="x", pady=(20, 10))
         
         self.test_btn = ctk.CTkButton(

@@ -126,7 +126,7 @@ class PgWarpApp(ctk.CTk):
     
     def create_toolbar(self):
         """Create the main toolbar"""
-        self.toolbar_frame = ctk.CTkFrame(self, height=45)
+        self.toolbar_frame = ctk.CTkFrame(self, height=45, fg_color="#E8DFD0")
         self.toolbar_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
         self.toolbar_frame.grid_columnconfigure(4, weight=1)  # Make connection info expandable
         
@@ -151,7 +151,7 @@ class PgWarpApp(ctk.CTk):
         self.disconnect_btn.grid(row=0, column=1, padx=8, pady=8)
         
         # Separator
-        separator = ctk.CTkFrame(self.toolbar_frame, width=2, height=28)
+        separator = ctk.CTkFrame(self.toolbar_frame, width=2, height=28, fg_color="#9B8F5E")
         separator.grid(row=0, column=2, padx=15, pady=8)
         
         # Execute button
@@ -169,7 +169,8 @@ class PgWarpApp(ctk.CTk):
         self.connection_info = ctk.CTkLabel(
             self.toolbar_frame, 
             text="Not connected",
-            font=ctk.CTkFont(size=11)
+            font=ctk.CTkFont(size=11),
+            text_color="#3E2723"
         )
         self.connection_info.grid(row=0, column=4, padx=20, pady=8, sticky="w")
         
@@ -178,7 +179,7 @@ class PgWarpApp(ctk.CTk):
             self.toolbar_frame, 
             text="AI: Not configured",
             font=ctk.CTkFont(size=11),
-            text_color="#FFFFFF"
+            text_color="#3E2723"
         )
         self.ai_status.grid(row=0, column=5, padx=10, pady=8)
     
@@ -189,7 +190,7 @@ class PgWarpApp(ctk.CTk):
         self.main_paned.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=8)
         
         # Left panel - Schema browser
-        self.left_frame = ctk.CTkFrame(self.main_paned, width=350)
+        self.left_frame = ctk.CTkFrame(self.main_paned, width=350, fg_color="#E8DFD0")
         self.main_paned.add(self.left_frame, width=350, minsize=280)
         
         # Schema browser
@@ -242,14 +243,15 @@ class PgWarpApp(ctk.CTk):
         self.results_frame.grid_rowconfigure(1, weight=1)
         
         # Results header
-        results_header = ctk.CTkFrame(self.results_frame, height=45)
+        results_header = ctk.CTkFrame(self.results_frame, height=45, fg_color="#E8DFD0")
         results_header.grid(row=0, column=0, sticky="ew", padx=8, pady=8)
         results_header.grid_columnconfigure(0, weight=1)
         
         self.results_label = ctk.CTkLabel(
             results_header, 
             text="Query results will appear here", 
-            font=ctk.CTkFont(size=15, weight="bold")
+            font=ctk.CTkFont(size=15, weight="bold"),
+            text_color="#3E2723"
         )
         self.results_label.grid(row=0, column=0, sticky="w", padx=15, pady=8)
         
@@ -313,14 +315,15 @@ class PgWarpApp(ctk.CTk):
     
     def create_status_bar(self):
         """Create the status bar"""
-        self.status_frame = ctk.CTkFrame(self, height=30)
+        self.status_frame = ctk.CTkFrame(self, height=30, fg_color="#E8DFD0")
         self.status_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
         self.status_frame.grid_columnconfigure(0, weight=1)
         
         self.status_label = ctk.CTkLabel(
             self.status_frame, 
             text="Ready", 
-            font=ctk.CTkFont(size=11)
+            font=ctk.CTkFont(size=11),
+            text_color="#3E2723"
         )
         self.status_label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
     

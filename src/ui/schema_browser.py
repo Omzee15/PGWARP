@@ -30,7 +30,7 @@ class SchemaBrowser(ctk.CTkFrame):
         title_label.pack(pady=(12, 8))
         
         # Search frame
-        search_frame = ctk.CTkFrame(self)
+        search_frame = ctk.CTkFrame(self, fg_color="#E8DFD0")
         search_frame.pack(fill="x", padx=12, pady=(0, 12))
         
         self.search_entry = ctk.CTkEntry(
@@ -43,7 +43,7 @@ class SchemaBrowser(ctk.CTkFrame):
         self.search_entry.bind("<KeyRelease>", self.on_search)
         
         # Tree frame
-        tree_frame = ctk.CTkFrame(self)
+        tree_frame = ctk.CTkFrame(self, fg_color="#E8DFD0")
         tree_frame.pack(fill="both", expand=True, padx=12, pady=(0, 12))
         
         # Create treeview with scrollbars
@@ -64,14 +64,15 @@ class SchemaBrowser(ctk.CTkFrame):
         self.tree.bind("<Button-3>", self.on_right_click)  # Right-click context menu
         
         # Info panel
-        info_frame = ctk.CTkFrame(self)
+        info_frame = ctk.CTkFrame(self, fg_color="#E8DFD0")
         info_frame.pack(fill="x", padx=12, pady=(0, 12))
         
         self.info_label = ctk.CTkLabel(
             info_frame, 
             text="No database connected",
             font=ctk.CTkFont(size=12),
-            wraplength=280
+            wraplength=280,
+            text_color="#3E2723"
         )
         self.info_label.pack(pady=12)
         
