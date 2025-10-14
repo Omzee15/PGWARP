@@ -1,0 +1,25 @@
+SELECT
+  c.id AS call_id, -- Call ID
+  c.target_id, -- Target ID associated with the call
+  f.name AS file_name -- File name associated with the call
+FROM public.call AS c -- Alias the "call" table as "c" for brevity
+LEFT JOIN public.file AS f
+  ON c.audio_file = f.id -- Join "call" and "file" tables on the audio_file ID to retrieve file information
+WHERE
+  c.target_id BETWEEN 11 AND 19; -- Filter calls based on the target ID being between 11 and 19 (inclusive).;
+
+in this make it to also show me the target number and the global dictionary field from the generated_segment_inforamtion table, and make it to only show me the entereies with unique call id's 
+
+
+
+
+SELECT id
+FROM public.call
+WHERE target_id BETWEEN 11 AND 19;
+
+
+SELECT f.name
+FROM public.file AS f
+JOIN public.call AS c ON f.id = c.audio_file
+WHERE c.target_id BETWEEN 11 AND 19
+  AND c.audio_file IS NOT NULL;
