@@ -1,5 +1,5 @@
 """
-Utility functions for PgWarp
+Utility functions for NeuronDB
 """
 
 import os
@@ -17,7 +17,7 @@ def setup_logging(log_level: str = "INFO") -> logging.Logger:
     logs_dir.mkdir(exist_ok=True)
     
     # Configure logging
-    log_file = logs_dir / "pgwarp.log"
+    log_file = logs_dir / "neurondb.log"
     
     logging.basicConfig(
         level=getattr(logging, log_level.upper()),
@@ -149,9 +149,9 @@ def format_bytes(bytes_size: int) -> str:
 def get_app_config_dir() -> Path:
     """Get application configuration directory"""
     if os.name == 'nt':  # Windows
-        config_dir = Path(os.environ.get('APPDATA', '')) / 'PgWarp'
+        config_dir = Path(os.environ.get('APPDATA', '')) / 'NeuronDB'
     else:  # macOS and Linux
-        config_dir = Path.home() / '.config' / 'pgwarp'
+        config_dir = Path.home() / '.config' / 'neurondb'
     
     config_dir.mkdir(parents=True, exist_ok=True)
     return config_dir

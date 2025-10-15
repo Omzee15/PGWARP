@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PgWarp - AI-Powered PostgreSQL Desktop Client
+NeuronDB - AI-Powered PostgreSQL Desktop Client
 Main entry point for the application
 """
 
@@ -13,13 +13,13 @@ from pathlib import Path
 src_dir = Path(__file__).parent / "src"
 sys.path.insert(0, str(src_dir))
 
-from ui.main_window import PgWarpApp
+from ui.main_window import NeuronDBApp
 
 def main():
-    """Main entry point for PgWarp application"""
+    """Main entry point for NeuronDB application"""
     try:
         # Set up the application
-        app = PgWarpApp()
+        app = NeuronDBApp()
         
         # Start the main event loop
         app.mainloop()
@@ -28,7 +28,7 @@ def main():
         print("\nApplication interrupted by user")
         sys.exit(0)
     except Exception as e:
-        print(f"Error starting PgWarp: {e}")
+        print(f"Error starting NeuronDB: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

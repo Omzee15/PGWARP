@@ -1,5 +1,5 @@
 """
-AI Assistant for PgWarp using LangChain and Gemini
+AI Assistant for NeuronDB using LangChain and Gemini
 Generates SQL queries from natural language prompts
 """
 
@@ -62,7 +62,7 @@ class SQLOutputParser:
             
         return text
 
-class PgWarpAI:
+class NeuronDBAI:
     """AI Assistant for generating SQL queries"""
     
     def __init__(self):

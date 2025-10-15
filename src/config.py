@@ -1,5 +1,5 @@
 """
-Configuration settings for PgWarp application
+Configuration settings for NeuronDB application
 """
 
 import os
@@ -13,7 +13,7 @@ class Config:
     """Application configuration"""
     
     # Application info
-    APP_NAME = "PgWarp"
+    APP_NAME = "NeuronDB"
     APP_VERSION = "1.0.0"
     APP_DESCRIPTION = "AI-Powered PostgreSQL Desktop Client"
     
@@ -21,6 +21,10 @@ class Config:
     BASE_DIR = Path(__file__).parent.parent
     LOGS_DIR = BASE_DIR / "logs"
     CONFIG_DIR = BASE_DIR / "config"
+    
+    # Logo paths
+    DESKTOP_ICON = BASE_DIR / "images" / "Group 5.png"
+    APP_LOGO = BASE_DIR / "images" / "Gemini_Generated_Image_5oy95d5oy95d5oy9-removebg-preview 2.png"
     
     # Database defaults
     DEFAULT_HOST = os.getenv("DEFAULT_HOST", "localhost")
@@ -47,7 +51,7 @@ class Config:
     
     # Logging Configuration
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-    LOG_FILE = "pgwarp.log"
+    LOG_FILE = "neurondb.log"
     LOG_MAX_BYTES = 10 * 1024 * 1024  # 10MB
     LOG_BACKUP_COUNT = 5
     

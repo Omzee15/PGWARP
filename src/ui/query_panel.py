@@ -45,7 +45,9 @@ class QueryPanel(ctk.CTkFrame):
             text="▶ Execute", 
             command=self.execute_query,
             width=120,
-            height=36
+            height=36,
+            fg_color="#9B8F5E",
+            hover_color="#87795A"
         )
         self.execute_btn.grid(row=0, column=0, padx=(10, 8), pady=12)
         
@@ -56,8 +58,8 @@ class QueryPanel(ctk.CTkFrame):
             command=self.clear_query,
             width=100,
             height=36,
-            fg_color="#E8DFD0",
-            hover_color="#D9CDBF"
+            fg_color="#9B8F5E",
+            hover_color="#87795A"
         )
         self.clear_btn.grid(row=0, column=1, padx=8, pady=12)
         
@@ -82,7 +84,9 @@ class QueryPanel(ctk.CTkFrame):
             text="🤖 Generate", 
             command=self.generate_with_ai,
             width=120,
-            height=36
+            height=36,
+            fg_color="#9B8F5E",
+            hover_color="#87795A"
         )
         self.ai_btn.grid(row=0, column=1, padx=8, pady=8)
         
@@ -92,15 +96,34 @@ class QueryPanel(ctk.CTkFrame):
             text="📐 Format", 
             command=self.format_query,
             width=100,
-            height=36
+            height=36,
+            fg_color="#9B8F5E",
+            hover_color="#87795A"
         )
         self.format_btn.grid(row=0, column=3, padx=(8, 10), pady=12)
         
         # Query editor
         editor_frame = ctk.CTkFrame(self)
         editor_frame.grid(row=1, column=0, sticky="nsew", padx=8, pady=(0, 8))
-        editor_frame.grid_columnconfigure(0, weight=1)
+        editor_frame.grid_columnconfigure(1, weight=1)
         editor_frame.grid_rowconfigure(0, weight=1)
+        
+        # Line numbers widget
+        self.line_numbers = tk.Text(
+            editor_frame,
+            font=("Consolas", 13),
+            bg="#E8DFD0",
+            fg="#8B7355",
+            width=4,
+            state="disabled",
+            relief=tk.FLAT,
+            borderwidth=0,
+            highlightthickness=0,
+            padx=5,
+            pady=8,
+            takefocus=0,
+            cursor="arrow"
+        )
         
         # Query text area
         self.query_text = tk.Text(
@@ -111,7 +134,7 @@ class QueryPanel(ctk.CTkFrame):
             insertbackground="#9B8F5E",
             selectbackground="#9B8F5E",
             selectforeground="white",
-            wrap=tk.WORD,
+            wrap=tk.NONE,
             undo=True,
             maxundo=50,
             relief=tk.SOLID,
@@ -133,10 +156,26 @@ class QueryPanel(ctk.CTkFrame):
         style.configure("Vertical.TScrollbar", background="#E8DFD0", troughcolor="#F5EFE7", borderwidth=1)
         style.configure("Horizontal.TScrollbar", background="#E8DFD0", troughcolor="#F5EFE7", borderwidth=1)
         
-        # Pack query editor and scrollbars
-        self.query_text.grid(row=0, column=0, sticky="nsew", padx=(2, 0), pady=(2, 0))
-        query_v_scroll.grid(row=0, column=1, sticky="ns", pady=(2, 0))
-        query_h_scroll.grid(row=1, column=0, sticky="ew", padx=(2, 0))
+        # Pack line numbers and query editor
+        self.line_numbers.grid(row=0, column=0, sticky="ns", pady=(2, 0))
+        self.query_text.grid(row=0, column=1, sticky="nsew", pady=(2, 0))
+        query_v_scroll.grid(row=0, column=2, sticky="ns", pady=(2, 0))
+        query_h_scroll.grid(row=1, column=1, sticky="ew")
+        
+        # Bind events to update line numbers
+        self.query_text.bind("<KeyRelease>", self.update_line_numbers)
+        self.query_text.bind("<MouseWheel>", self.update_line_numbers)
+        self.query_text.bind("<Configure>", self.update_line_numbers)
+        
+        # Sync scrolling between line numbers and text
+        def on_text_scroll(*args):
+            self.line_numbers.yview_moveto(args[0])
+            query_v_scroll.set(*args)
+        
+        self.query_text.configure(yscrollcommand=on_text_scroll)
+        
+        # Initialize line numbers
+        self.update_line_numbers()
         
         # Query info frame
         info_frame = ctk.CTkFrame(self, height=35, fg_color="#E8DFD0")
@@ -160,12 +199,31 @@ class QueryPanel(ctk.CTkFrame):
         
         # Bind events
         self.query_text.bind("<Control-Return>", lambda e: self.execute_query())
-        self.query_text.bind("<F5>", lambda e: self.execute_query())
-        self.query_text.bind("<Button-3>", self.show_context_menu)  # Right-click
+        self.query_text.bind("<Command-Return>", lambda e: self.execute_query())
         
+        # Store initial content
+        self.insert_welcome_text()
+    
+    def update_line_numbers(self, event=None):
+        """Update line numbers in the line number widget"""
+        # Get the number of lines in the text widget
+        line_count = self.query_text.get("1.0", "end-1c").count('\n') + 1
+        
+        # Generate line numbers
+        line_numbers_text = "\n".join(str(i) for i in range(1, line_count + 1))
+        
+        # Update line numbers widget
+        self.line_numbers.configure(state="normal")
+        self.line_numbers.delete("1.0", "end")
+        self.line_numbers.insert("1.0", line_numbers_text)
+        self.line_numbers.configure(state="disabled")
+    
+    def insert_welcome_text(self):
+        """Insert welcome text into the query editor"""
         # Add some sample placeholder text
-        sample_query = "-- Welcome to PgWarp Query Tool\n-- Write your SQL queries here\n-- Press Ctrl+Enter or F5 to execute\n-- Use the AI assistant above to generate queries\n\nSELECT version();"
+        sample_query = "-- Welcome to NeuronDB Query Tool\n-- Write your SQL queries here\n-- Press Ctrl+Enter or F5 to execute\n-- Use the AI assistant above to generate queries\n\nSELECT version();"
         self.query_text.insert("1.0", sample_query)
+        self.update_line_numbers()
     
     def execute_query(self):
         """Execute the current query"""
@@ -253,6 +311,21 @@ class QueryPanel(ctk.CTkFrame):
         """Set the query text"""
         self.query_text.delete("1.0", tk.END)
         self.query_text.insert("1.0", query)
+    
+    def append_query(self, query: str):
+        """Append query text to the current query"""
+        # Get current content
+        current_content = self.query_text.get("1.0", tk.END).strip()
+        
+        # Add newlines if there's existing content
+        if current_content:
+            self.query_text.insert(tk.END, "\n\n")
+        
+        # Append the new query
+        self.query_text.insert(tk.END, query)
+        
+        # Update info
+        self.query_info.configure(text="Saved query appended")
     
     def clear_query(self):
         """Clear the query text"""

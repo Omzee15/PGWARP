@@ -1,6 +1,36 @@
 """
-Saved queries manager for PgWarp
+Saved queries manager for NeuronDB
+Handles storage and retrieval of saved SQL queries
 """
+
+import json
+import os
+from pathlib import Path
+from typing import List, Optional, Dict
+from dataclasses import dataclass, asdict
+from datetime import datetime
+
+@dataclass
+class SavedQuery:
+    """Represents a saved SQL query"""
+    id: str
+    title: str
+    query: str
+    created_at: str = None
+    
+    def __post_init__(self):
+        if self.created_at is None:
+            self.created_at = datetime.now().isoformat()
+
+class SavedQueriesManager:
+    """Manages saved queries with persistent storage"""
+    
+    def __init__(self):
+        # Determine config directory based on OS
+        if os.name == 'nt':  # Windows
+            config_dir = Path(os.environ.get('APPDATA', '')) / 'NeuronDB'
+        else:  # macOS/Linux
+            config_dir = Path.home() / '.config' / 'neurondb'
 
 import json
 from pathlib import Path

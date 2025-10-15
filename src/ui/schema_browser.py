@@ -13,28 +13,129 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 from utils.saved_queries import SavedQueriesManager
 
+
+class QueryTooltip:
+    """Tooltip widget for showing query preview on hover"""
+    
+    def __init__(self, widget):
+        self.widget = widget
+        self.tip_window = None
+        self.text = ""
+        
+    def show_tooltip(self, text: str, x: int, y: int):
+        """Display tooltip with query text"""
+        if self.tip_window or not text:
+            return
+        
+        # Create tooltip window
+        self.tip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        
+        # Create frame with border
+        frame = tk.Frame(tw, background="#3E2723", borderwidth=1, relief="solid")
+        frame.pack()
+        
+        # Create text widget for query preview
+        text_widget = tk.Text(
+            frame,
+            background="#F5EFE7",
+            foreground="#3E2723",
+            font=("Consolas", 10),
+            wrap="word",
+            borderwidth=8,
+            relief="flat",
+            padx=8,
+            pady=8,
+            width=50,
+            height=min(10, len(text.split('\n')) + 1)
+        )
+        text_widget.pack()
+        
+        # Insert query text
+        text_widget.insert("1.0", text)
+        text_widget.configure(state="disabled")
+        
+    def hide_tooltip(self):
+        """Hide the tooltip"""
+        if self.tip_window:
+            self.tip_window.destroy()
+            self.tip_window = None
+
+
 class SchemaBrowser(ctk.CTkFrame):
     """Tree view for browsing database schema"""
     
     def __init__(self, parent, on_table_select: Optional[Callable[[str], None]] = None, 
                  on_query_select: Optional[Callable[[str], None]] = None,
-                 ai_assistant: Optional[Any] = None):
+                 ai_assistant: Optional[Any] = None,
+                 on_connect: Optional[Callable[[], None]] = None,
+                 on_disconnect: Optional[Callable[[], None]] = None):
         super().__init__(parent)
         
         self.on_table_select = on_table_select
         self.on_query_select = on_query_select
         self.ai_assistant = ai_assistant
+        self.on_connect = on_connect
+        self.on_disconnect = on_disconnect
         self.schema_data = {}
         self.saved_queries_manager = SavedQueriesManager()
+        
+        # Tooltip for query preview
+        self.query_tooltip = None
+        self.hover_after_id = None
         
         # Create UI components
         self.create_widgets()
     
     def create_widgets(self):
         """Create schema browser widgets"""
+        # Connection buttons frame at the top
+        connection_frame = ctk.CTkFrame(self, fg_color="#E8DFD0")
+        connection_frame.pack(fill="x", padx=12, pady=(12, 8))
+        
+        # Create button container for horizontal layout
+        button_container = ctk.CTkFrame(connection_frame, fg_color="transparent")
+        button_container.pack(pady=10, padx=10)
+        
+        self.connect_btn = ctk.CTkButton(
+            button_container,
+            text="🔌 Connect",
+            command=self.on_connect if self.on_connect else None,
+            width=100,
+            height=32,
+            font=ctk.CTkFont(size=11, weight="bold"),
+            fg_color="#9B8F5E",
+            hover_color="#87795A"
+        )
+        self.connect_btn.pack(side="left", padx=5)
+        
+        self.disconnect_btn = ctk.CTkButton(
+            button_container,
+            text="🔌 Disconnect",
+            command=self.on_disconnect if self.on_disconnect else None,
+            width=100,
+            height=32,
+            font=ctk.CTkFont(size=11, weight="bold"),
+            state="disabled",
+            fg_color="#C4756C",
+            hover_color="#A85E56"
+        )
+        self.disconnect_btn.pack(side="left", padx=5)
+        
+        # Connection info label
+        self.connection_label = ctk.CTkLabel(
+            connection_frame,
+            text="Not connected",
+            font=ctk.CTkFont(size=10),
+            text_color="#8B7355",
+            wraplength=220
+        )
+        self.connection_label.pack(pady=(0, 10), padx=10)
+        
         # Title frame
         title_frame = ctk.CTkFrame(self, fg_color="transparent")
-        title_frame.pack(pady=(12, 8), fill="x", padx=12)
+        title_frame.pack(pady=(8, 8), fill="x", padx=12)
         
         title_label = ctk.CTkLabel(
             title_frame, 
@@ -43,20 +144,7 @@ class SchemaBrowser(ctk.CTkFrame):
         )
         title_label.pack(side="left", expand=True)
         
-        # Search frame
-        search_frame = ctk.CTkFrame(self, fg_color="#E8DFD0")
-        search_frame.pack(fill="x", padx=12, pady=(0, 12))
-        
-        self.search_entry = ctk.CTkEntry(
-            search_frame, 
-            placeholder_text="Search tables...",
-            height=32,
-            font=ctk.CTkFont(size=12)
-        )
-        self.search_entry.pack(fill="x", padx=12, pady=12)
-        self.search_entry.bind("<KeyRelease>", self.on_search)
-        
-        # Tree frame for database schema
+        # Tree frame for database schema (search removed)
         tree_frame = ctk.CTkFrame(self, fg_color="#E8DFD0")
         tree_frame.pack(fill="both", expand=True, padx=12, pady=(0, 12))
         
@@ -133,7 +221,7 @@ class SchemaBrowser(ctk.CTkFrame):
         # Create treeview for saved queries (matching results table style)
         self.queries_tree = ttk.Treeview(
             queries_table_frame,
-            columns=("title", "actions"),
+            columns=("title", "copy", "delete"),
             show="headings",
             selectmode="browse",
             height=8
@@ -141,10 +229,12 @@ class SchemaBrowser(ctk.CTkFrame):
         
         # Configure columns
         self.queries_tree.heading("title", text="Query Title")
-        self.queries_tree.heading("actions", text="")
+        self.queries_tree.heading("copy", text="")
+        self.queries_tree.heading("delete", text="")
         
-        self.queries_tree.column("title", width=200, anchor="w")
-        self.queries_tree.column("actions", width=50, anchor="center")
+        self.queries_tree.column("title", width=180, anchor="w")
+        self.queries_tree.column("copy", width=40, anchor="center")
+        self.queries_tree.column("delete", width=40, anchor="center")
         
         # Scrollbars
         queries_v_scroll = ttk.Scrollbar(queries_table_frame, orient="vertical", command=self.queries_tree.yview)
@@ -154,10 +244,15 @@ class SchemaBrowser(ctk.CTkFrame):
         self.queries_tree.pack(side="left", fill="both", expand=True, padx=2, pady=2)
         queries_v_scroll.pack(side="right", fill="y", pady=2)
         
+        # Create tooltip for query preview
+        self.query_tooltip = QueryTooltip(self.queries_tree)
+        
         # Bind events
         self.queries_tree.bind("<Double-1>", self.on_query_tree_double_click)
         self.queries_tree.bind("<Button-3>", self.on_query_tree_right_click)
         self.queries_tree.bind("<Button-1>", self.on_query_tree_click)
+        self.queries_tree.bind("<Motion>", self.on_query_tree_motion)
+        self.queries_tree.bind("<Leave>", self.on_query_tree_leave)
         
         # Load saved queries
         self.refresh_saved_queries()
@@ -279,15 +374,15 @@ class SchemaBrowser(ctk.CTkFrame):
         
         if not queries:
             # Show empty state message
-            self.queries_tree.insert("", "end", values=("No saved queries yet - Click ➕ to add", ""), tags=("empty",))
+            self.queries_tree.insert("", "end", values=("No saved queries yet - Click ➕ to add", "", ""), tags=("empty",))
             self.queries_tree.tag_configure("empty", foreground="#8B7355", font=("Segoe UI", 10, "italic"))
         else:
             # Add each saved query as a row with alternating colors
             for i, query in enumerate(queries):
                 tag = "odd" if i % 2 == 1 else "even"
-                # Store query id in the item
+                # Store query id in the item - now with separate copy and delete columns
                 item_id = self.queries_tree.insert("", "end", 
-                                                   values=(f"💾 {query.title}", "🗑️"), 
+                                                   values=(f"💾 {query.title}", "📋", "🗑️"), 
                                                    tags=(tag, query.id))
             
             # Configure row tags for alternating colors (matching results table)
@@ -296,25 +391,34 @@ class SchemaBrowser(ctk.CTkFrame):
     
     def on_query_tree_click(self, event):
         """Handle single click on queries tree"""
-        # Check if delete button (🗑️) was clicked
+        # Check if copy or delete button was clicked
         region = self.queries_tree.identify_region(event.x, event.y)
         if region == "cell":
             column = self.queries_tree.identify_column(event.x)
             item = self.queries_tree.identify_row(event.y)
             
-            if item and column == "#2":  # Actions column (delete button)
+            if item:
                 # Get query id from tags
                 tags = self.queries_tree.item(item, "tags")
+                query_id = None
                 for tag in tags:
                     if tag not in ["odd", "even", "empty"]:
                         query_id = tag
-                        saved_query = self.saved_queries_manager.get_query(query_id)
-                        if saved_query:
-                            self.confirm_delete_query(query_id, saved_query.title)
                         break
+                
+                if query_id:
+                    saved_query = self.saved_queries_manager.get_query(query_id)
+                    if saved_query:
+                        # Column #2 is copy button (📋)
+                        if column == "#2":
+                            self.copy_query_to_clipboard(query_id)
+                            self.flash_row(item)
+                        # Column #3 is delete button (🗑️)
+                        elif column == "#3":
+                            self.confirm_delete_query(query_id, saved_query.title)
     
     def on_query_tree_double_click(self, event):
-        """Handle double-click on saved query to load it"""
+        """Handle double-click on saved query to copy it to clipboard"""
         item = self.queries_tree.selection()
         if not item:
             return
@@ -325,9 +429,34 @@ class SchemaBrowser(ctk.CTkFrame):
             if tag not in ["odd", "even", "empty"]:
                 query_id = tag
                 saved_query = self.saved_queries_manager.get_query(query_id)
-                if saved_query and self.on_query_select:
-                    self.on_query_select(saved_query.query)
+                if saved_query:
+                    # Copy to clipboard
+                    self.clipboard_clear()
+                    self.clipboard_append(saved_query.query)
+                    self.update()  # Make clipboard change persistent
+                    
+                    # Visual feedback - flash the row
+                    self.flash_row(item[0])
+                    
+                    # Update status if available
+                    if hasattr(self.master.master, 'update_status'):
+                        self.master.master.update_status(f"'{saved_query.title}' copied to clipboard")
                 break
+    
+    def flash_row(self, item_id):
+        """Flash a row to provide visual feedback"""
+        # Store original tags
+        original_tags = self.queries_tree.item(item_id, "tags")
+        
+        # Flash with selection color
+        self.queries_tree.item(item_id, tags=("flash",))
+        self.queries_tree.tag_configure("flash", background="#9B8F5E", foreground="white")
+        
+        # Restore original tags after 300ms
+        def restore_tags():
+            self.queries_tree.item(item_id, tags=original_tags)
+        
+        self.after(300, restore_tags)
     
     def on_query_tree_right_click(self, event):
         """Handle right-click on saved query"""
@@ -356,16 +485,21 @@ class SchemaBrowser(ctk.CTkFrame):
         # Create context menu
         context_menu = tk.Menu(self, tearoff=0)
         context_menu.add_command(
-            label="Open Query",
-            command=lambda: self.open_saved_query(query_id)
+            label="📋 Copy to Clipboard",
+            command=lambda: self.copy_query_to_clipboard(query_id)
         )
         context_menu.add_command(
-            label="Edit Title",
+            label="➕ Append to Editor",
+            command=lambda: self.append_query_to_editor(query_id)
+        )
+        context_menu.add_separator()
+        context_menu.add_command(
+            label="✏️ Edit Title",
             command=lambda: self.edit_query_title(query_id)
         )
         context_menu.add_separator()
         context_menu.add_command(
-            label="Delete Query",
+            label="🗑️ Delete Query",
             command=lambda: self.delete_saved_query(query_id)
         )
         
@@ -373,6 +507,59 @@ class SchemaBrowser(ctk.CTkFrame):
             context_menu.tk_popup(event.x_root, event.y_root)
         finally:
             context_menu.grab_release()
+    
+    def on_query_tree_motion(self, event):
+        """Handle mouse motion over queries tree - show tooltip"""
+        # Cancel any pending tooltip
+        if self.hover_after_id:
+            self.after_cancel(self.hover_after_id)
+            self.hover_after_id = None
+        
+        # Hide existing tooltip
+        if self.query_tooltip:
+            self.query_tooltip.hide_tooltip()
+        
+        # Get item under cursor
+        item = self.queries_tree.identify_row(event.y)
+        if not item:
+            return
+        
+        # Get query id from tags
+        tags = self.queries_tree.item(item, "tags")
+        query_id = None
+        for tag in tags:
+            if tag not in ["odd", "even", "empty"]:
+                query_id = tag
+                break
+        
+        if not query_id:
+            return
+        
+        # Get the saved query
+        saved_query = self.saved_queries_manager.get_query(query_id)
+        if not saved_query:
+            return
+        
+        # Schedule tooltip to show after 500ms (prevents flickering)
+        def show_delayed_tooltip():
+            if self.query_tooltip:
+                # Calculate tooltip position (offset from cursor)
+                x = event.x_root + 15
+                y = event.y_root + 10
+                self.query_tooltip.show_tooltip(saved_query.query, x, y)
+        
+        self.hover_after_id = self.after(500, show_delayed_tooltip)
+    
+    def on_query_tree_leave(self, event):
+        """Handle mouse leaving the queries tree - hide tooltip"""
+        # Cancel any pending tooltip
+        if self.hover_after_id:
+            self.after_cancel(self.hover_after_id)
+            self.hover_after_id = None
+        
+        # Hide tooltip
+        if self.query_tooltip:
+            self.query_tooltip.hide_tooltip()
     
     def confirm_delete_query(self, query_id: str, query_title: str):
         """Confirm and delete a saved query"""
@@ -387,6 +574,29 @@ class SchemaBrowser(ctk.CTkFrame):
             if hasattr(self.master.master, 'update_status'):
                 self.master.master.update_status(f"Deleted query: {query_title}")
     
+    def copy_query_to_clipboard(self, query_id: str):
+        """Copy saved query to clipboard"""
+        saved_query = self.saved_queries_manager.get_query(query_id)
+        if saved_query:
+            # Copy to clipboard
+            self.clipboard_clear()
+            self.clipboard_append(saved_query.query)
+            self.update()  # Make clipboard change persistent
+            
+            # Update status
+            if hasattr(self.master.master, 'update_status'):
+                self.master.master.update_status(f"'{saved_query.title}' copied to clipboard")
+    
+    def append_query_to_editor(self, query_id: str):
+        """Append saved query to the query editor"""
+        saved_query = self.saved_queries_manager.get_query(query_id)
+        if saved_query and self.on_query_select:
+            self.on_query_select(saved_query.query)
+            
+            # Update status
+            if hasattr(self.master.master, 'update_status'):
+                self.master.master.update_status(f"'{saved_query.title}' appended to editor")
+    
     def update_info(self):
         """Update the info panel"""
         if not self.schema_data:
@@ -400,76 +610,17 @@ class SchemaBrowser(ctk.CTkFrame):
         info_text = f"Schemas: {schema_count}\nTables: {table_count}\nViews: {view_count}"
         self.info_label.configure(text=info_text)
     
-    def on_search(self, event):
-        """Handle search input"""
-        search_term = self.search_entry.get().lower()
-        
-        if not search_term:
-            # Show all items
-            self.show_all_items()
-            return
-        
-        # Hide all items first
-        self.hide_all_items()
-        
-        # Show matching items
-        self.show_matching_items(search_term)
-    
-    def show_all_items(self):
-        """Show all tree items"""
-        def show_item(item):
-            children = self.tree.get_children(item)
-            for child in children:
-                show_item(child)
-            
-            # Make item visible by ensuring parent is expanded
-            parent = self.tree.parent(item)
-            if parent:
-                self.tree.item(parent, open=True)
-        
-        for item in self.tree.get_children():
-            show_item(item)
-    
-    def hide_all_items(self):
-        """Hide all tree items except top-level schemas"""
-        def hide_children(item):
-            self.tree.item(item, open=False)
-            for child in self.tree.get_children(item):
-                hide_children(child)
-        
-        for item in self.tree.get_children():
-            hide_children(item)
-    
-    def show_matching_items(self, search_term: str):
-        """Show items that match the search term"""
-        def check_and_show_item(item):
-            item_text = self.tree.item(item, "text").lower()
-            values = self.tree.item(item, "values")
-            
-            # Check if this item matches
-            matches = search_term in item_text
-            if values and len(values) > 0:
-                matches = matches or search_term in values[0].lower()
-            
-            # Check children
-            children = self.tree.get_children(item)
-            child_matches = False
-            for child in children:
-                if check_and_show_item(child):
-                    child_matches = True
-            
-            # Show this item if it matches or has matching children
-            if matches or child_matches:
-                parent = self.tree.parent(item)
-                if parent:
-                    self.tree.item(parent, open=True)
-                self.tree.item(item, open=True)
-                return True
-            
-            return False
-        
-        for item in self.tree.get_children():
-            check_and_show_item(item)
+    def set_connected(self, connected: bool, db_info: str = None):
+        """Update connection button states and connection info"""
+        if connected:
+            self.connect_btn.configure(state="disabled")
+            self.disconnect_btn.configure(state="normal")
+            if db_info:
+                self.connection_label.configure(text=db_info, text_color="#3E2723")
+        else:
+            self.connect_btn.configure(state="normal")
+            self.disconnect_btn.configure(state="disabled")
+            self.connection_label.configure(text="Not connected", text_color="#8B7355")
     
     def on_item_double_click(self, event):
         """Handle double-click on tree item"""

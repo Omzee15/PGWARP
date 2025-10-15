@@ -156,7 +156,7 @@ class PSQLTerminal(ctk.CTkFrame):
         self.send_btn.grid(row=0, column=2, padx=(8, 15), pady=12)
         
         # Initial message
-        self.write_to_terminal("Welcome to PgWarp PSQL Terminal\n")
+        self.write_to_terminal("Welcome to NeuronDB PSQL Terminal\n")
         self.write_to_terminal("Connect to a database to start using the interactive PostgreSQL shell.\n\n")
     
     def set_connection(self, db_connection):

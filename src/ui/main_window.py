@@ -1,5 +1,5 @@
 """
-Main window for PgWarp application
+Main window for NeuronDB application
 """
 
 import tkinter as tk
@@ -11,17 +11,21 @@ import os
 from pathlib import Path
 import pandas as pd
 from datetime import datetime
+from PIL import Image, ImageTk
 
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 
 from database.connection import DatabaseConnection, ConnectionManager
-from ai.assistant import PgWarpAI
+from ai.assistant import NeuronDBAI
 from utils.helpers import setup_logging
 from ui.connection_dialog import ConnectionDialog
 from ui.query_panel import QueryPanel
 from ui.schema_browser import SchemaBrowser
 from ui.psql_terminal import PSQLTerminal
+from ui.db_diagram_view import DBDiagramView
+from ui.config_view import ConfigView
+from config import Config
 
 # Set appearance mode and color theme
 ctk.set_appearance_mode("light")  # Modes: "System" (standard), "Dark", "Light"
@@ -39,8 +43,8 @@ ctk.ThemeManager.theme["CTkScrollableFrame"]["fg_color"] = ["#F5EFE7", "#F5EFE7"
 ctk.ThemeManager.theme["CTkEntry"]["fg_color"] = ["#F5EFE7", "#F5EFE7"]
 ctk.ThemeManager.theme["CTkEntry"]["border_color"] = ["#E8DFD0", "#E8DFD0"]
 
-class PgWarpApp(ctk.CTk):
-    """Main application window for PgWarp"""
+class NeuronDBApp(ctk.CTk):
+    """Main application window for NeuronDB"""
     
     def __init__(self):
         super().__init__()
@@ -55,23 +59,31 @@ class PgWarpApp(ctk.CTk):
         self.current_schema = {}
         
         # Configure main window
-        self.title("PgWarp - AI-Powered PostgreSQL Client")
+        self.title("NeuronDB - AI-Powered PostgreSQL Client")
         self.geometry("1600x1100")
         self.minsize(1400, 950)
         
         # Configure window for better text display
         self.tk.call('tk', 'scaling', 1.0)  # Ensure consistent scaling
         
-        # Set window icon (you can add an icon file later)
-        # self.iconbitmap("assets/icon.ico")
+        # Set window icon (desktop icon)
+        try:
+            if Config.DESKTOP_ICON.exists():
+                icon_image = Image.open(Config.DESKTOP_ICON)
+                icon_photo = ImageTk.PhotoImage(icon_image)
+                self.iconphoto(True, icon_photo)
+                # Keep reference to prevent garbage collection
+                self._icon_photo = icon_photo
+        except Exception as e:
+            self.logger.warning(f"Could not load desktop icon: {e}")
         
         # Configure grid weights
-        self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=0)
         
         # Create UI components
         self.create_menu_bar()
-        self.create_toolbar()
         self.create_main_interface()
         self.create_status_bar()
         
@@ -81,7 +93,7 @@ class PgWarpApp(ctk.CTk):
         # Bind close event
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         
-        self.logger.info("PgWarp application initialized")
+        self.logger.info("NeuronDB application initialized")
     
     def create_menu_bar(self):
         """Create the application menu bar"""
@@ -124,70 +136,49 @@ class PgWarpApp(ctk.CTk):
         menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="About", command=self.show_about)
     
-    def create_toolbar(self):
-        """Create the main toolbar"""
-        self.toolbar_frame = ctk.CTkFrame(self, height=45, fg_color="#E8DFD0")
-        self.toolbar_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
-        self.toolbar_frame.grid_columnconfigure(4, weight=1)  # Make connection info expandable
-        
-        # Connection buttons
-        self.connect_btn = ctk.CTkButton(
-            self.toolbar_frame, 
-            text="Connect", 
-            command=self.show_connection_dialog,
-            width=120,
-            height=28
-        )
-        self.connect_btn.grid(row=0, column=0, padx=(10, 8), pady=8)
-        
-        self.disconnect_btn = ctk.CTkButton(
-            self.toolbar_frame, 
-            text="Disconnect", 
-            command=self.disconnect_database,
-            width=120,
-            height=28,
-            state="disabled"
-        )
-        self.disconnect_btn.grid(row=0, column=1, padx=8, pady=8)
-        
-        # Separator
-        separator = ctk.CTkFrame(self.toolbar_frame, width=2, height=28, fg_color="#9B8F5E")
-        separator.grid(row=0, column=2, padx=15, pady=8)
-        
-        # Execute button
-        self.execute_btn = ctk.CTkButton(
-            self.toolbar_frame, 
-            text="Execute", 
-            command=self.execute_current_query,
-            width=120,
-            height=28,
-            state="disabled"
-        )
-        self.execute_btn.grid(row=0, column=3, padx=8, pady=8)
-        
-        # Connection info
-        self.connection_info = ctk.CTkLabel(
-            self.toolbar_frame, 
-            text="Not connected",
-            font=ctk.CTkFont(size=11),
-            text_color="#3E2723"
-        )
-        self.connection_info.grid(row=0, column=4, padx=20, pady=8, sticky="w")
-        
-        # AI indicator
-        self.ai_status = ctk.CTkLabel(
-            self.toolbar_frame, 
-            text="AI: Not configured",
-            font=ctk.CTkFont(size=11),
-            text_color="#3E2723"
-        )
-        self.ai_status.grid(row=0, column=5, padx=10, pady=8)
-    
     def create_main_interface(self):
-        """Create the main interface with panels"""
+        """Create the main interface with tabbed layout"""
+        # Create main tabbed interface
+        self.main_tabs = ctk.CTkTabview(
+            self, 
+            fg_color="#F5EFE7",
+            segmented_button_fg_color="#E8DFD0",
+            segmented_button_selected_color="#9B8F5E",
+            segmented_button_selected_hover_color="#87795A",
+            segmented_button_unselected_color="#E8DFD0",
+            segmented_button_unselected_hover_color="#D9CDBF",
+            text_color="#3E2723",
+            text_color_disabled="#3E2723"
+        )
+        self.main_tabs.grid(row=0, column=0, sticky="nsew", padx=10, pady=(10, 0))
+        
+        # Add tabs
+        self.main_tabs.add("DB Query")
+        self.main_tabs.add("DB View")
+        self.main_tabs.add("Config")
+        
+        # Create DB Query tab (current app layout)
+        self.create_db_query_tab()
+        
+        # Create DB View tab (DBML diagram)
+        self.db_diagram_view = DBDiagramView(self.main_tabs.tab("DB View"))
+        self.db_diagram_view.pack(fill="both", expand=True)
+        
+        # Create Config tab
+        self.config_view = ConfigView(self.main_tabs.tab("Config"))
+        self.config_view.pack(fill="both", expand=True)
+    
+    def create_db_query_tab(self):
+        """Create the DB Query tab with the main query interface"""
+        db_query_tab = self.main_tabs.tab("DB Query")
+        
+        # Configure grid for DB Query tab
+        db_query_tab.grid_columnconfigure(0, weight=1)
+        db_query_tab.grid_rowconfigure(0, weight=1)
+        
         # Create main paned window
-        self.main_paned = tk.PanedWindow(self, orient=tk.HORIZONTAL, sashrelief=tk.RAISED, sashwidth=6)
-        self.main_paned.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=10, pady=8)
+        self.main_paned = tk.PanedWindow(db_query_tab, orient=tk.HORIZONTAL, sashrelief=tk.RAISED, sashwidth=6)
+        self.main_paned.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
         
         # Left panel - Schema browser
         self.left_frame = ctk.CTkFrame(self.main_paned, width=350, fg_color="#E8DFD0")
@@ -205,18 +196,20 @@ class PgWarpApp(ctk.CTk):
         self.right_paned.add(self.query_frame, height=400, minsize=250)
         
         # Create tabbed interface for query tools
-        self.notebook = ctk.CTkTabview(self.query_frame, fg_color="#F5EFE7", 
+        self.query_notebook = ctk.CTkTabview(self.query_frame, fg_color="#F5EFE7", 
                                        segmented_button_fg_color="#E8DFD0",
                                        segmented_button_selected_color="#9B8F5E",
                                        segmented_button_selected_hover_color="#87795A",
                                        segmented_button_unselected_color="#E8DFD0",
-                                       segmented_button_unselected_hover_color="#D9CDBF")
-        self.notebook.pack(fill="both", expand=True, padx=8, pady=8)
+                                       segmented_button_unselected_hover_color="#D9CDBF",
+                                       text_color="#3E2723",
+                                       text_color_disabled="#3E2723")
+        self.query_notebook.pack(fill="both", expand=True, padx=0, pady=0)
         
         # Query tool tab
-        self.notebook.add("Query Tool")
+        self.query_notebook.add("Query Tool")
         self.query_panel = QueryPanel(
-            self.notebook.tab("Query Tool"), 
+            self.query_notebook.tab("Query Tool"), 
             self.execute_query_callback,
             self.ai_generate_callback,
             self.display_results_callback,
@@ -224,21 +217,23 @@ class PgWarpApp(ctk.CTk):
         )
         self.query_panel.pack(fill="both", expand=True)
         
-        # Now create schema browser with query callback
+        # Now create schema browser with query callback and connection callbacks
         self.schema_browser = SchemaBrowser(
             self.left_frame, 
             self.on_table_select,
             self.on_saved_query_select,
-            self.ai_assistant
+            self.ai_assistant,
+            self.show_connection_dialog,  # on_connect
+            self.disconnect_database       # on_disconnect
         )
-        self.schema_browser.pack(fill="both", expand=True, padx=8, pady=8)
+        self.schema_browser.pack(fill="both", expand=True, padx=0, pady=0)
         
         # Link query panel to schema browser
         self.query_panel.set_schema_browser(self.schema_browser)
         
         # PSQL terminal tab
-        self.notebook.add("PSQL Terminal")
-        self.psql_terminal = PSQLTerminal(self.notebook.tab("PSQL Terminal"))
+        self.query_notebook.add("PSQL Terminal")
+        self.psql_terminal = PSQLTerminal(self.query_notebook.tab("PSQL Terminal"))
         self.psql_terminal.pack(fill="both", expand=True)
         
         # Results panel
@@ -256,7 +251,7 @@ class PgWarpApp(ctk.CTk):
         
         # Results header
         results_header = ctk.CTkFrame(self.results_frame, height=45, fg_color="#E8DFD0")
-        results_header.grid(row=0, column=0, sticky="ew", padx=8, pady=8)
+        results_header.grid(row=0, column=0, sticky="ew", padx=0, pady=0)
         results_header.grid_columnconfigure(0, weight=1)
         
         self.results_label = ctk.CTkLabel(
@@ -278,7 +273,9 @@ class PgWarpApp(ctk.CTk):
             command=self.export_csv,
             width=80,
             height=32,
-            state="disabled"
+            state="disabled",
+            fg_color="#9B8F5E",
+            hover_color="#87795A"
         )
         self.export_csv_btn.grid(row=0, column=0, padx=(0, 5))
         
@@ -297,14 +294,14 @@ class PgWarpApp(ctk.CTk):
         
         # Results table frame
         table_frame = ctk.CTkFrame(self.results_frame)
-        table_frame.grid(row=1, column=0, sticky="nsew", padx=8, pady=(0, 8))
+        table_frame.grid(row=1, column=0, sticky="nsew", padx=0, pady=0)
         table_frame.grid_columnconfigure(0, weight=1)
         table_frame.grid_rowconfigure(0, weight=1)
         
-        # Create treeview for results
+        # Create treeview for results with tree column for row numbers
         self.results_tree = ttk.Treeview(
             table_frame, 
-            show="headings",
+            show="tree headings",
             selectmode="extended"
         )
         
@@ -328,7 +325,7 @@ class PgWarpApp(ctk.CTk):
     def create_status_bar(self):
         """Create the status bar"""
         self.status_frame = ctk.CTkFrame(self, height=30, fg_color="#E8DFD0")
-        self.status_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
+        self.status_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=(0, 5))
         self.status_frame.grid_columnconfigure(0, weight=1)
         
         self.status_label = ctk.CTkLabel(
@@ -390,6 +387,10 @@ class PgWarpApp(ctk.CTk):
         self.current_results = results
         self.current_columns = columns
         
+        # Configure tree column for row numbers
+        self.results_tree.column("#0", width=50, minwidth=50, anchor="center", stretch=False)
+        self.results_tree.heading("#0", text="#", anchor="center")
+        
         # Configure columns
         self.results_tree["columns"] = columns
         
@@ -447,7 +448,8 @@ class PgWarpApp(ctk.CTk):
             
             # Add alternating row colors by using tags
             tag = "odd" if i % 2 == 1 else "even"
-            self.results_tree.insert("", "end", values=values, tags=(tag,))
+            # Insert with row number in the tree column
+            self.results_tree.insert("", "end", text=str(i + 1), values=values, tags=(tag,))
         
         # Configure row tags for better readability
         self.results_tree.tag_configure("odd", background="#F5EFE7")
@@ -586,12 +588,10 @@ class PgWarpApp(ctk.CTk):
     def init_ai_assistant(self):
         """Initialize the AI assistant"""
         try:
-            self.ai_assistant = PgWarpAI()
-            self.ai_status.configure(text="AI: Ready", text_color="#6B8E23")
+            self.ai_assistant = NeuronDBAI()
             self.logger.info("AI assistant initialized successfully")
         except Exception as e:
             self.logger.error(f"Failed to initialize AI assistant: {e}")
-            self.ai_status.configure(text="AI: Error", text_color="#D2691E")
             messagebox.showwarning(
                 "AI Assistant", 
                 f"Failed to initialize AI assistant:\n{e}\n\n"
@@ -621,12 +621,9 @@ class PgWarpApp(ctk.CTk):
                 password=connection_config['password']
             )
             
-            # Update UI
-            conn_text = f"Connected to {connection_config['database']}@{connection_config['host']}:{connection_config['port']}"
-            self.connection_info.configure(text=conn_text)
-            self.connect_btn.configure(state="disabled")
-            self.disconnect_btn.configure(state="normal")
-            self.execute_btn.configure(state="normal")
+            # Update UI - update schema browser connection state with DB info
+            db_info = f"{connection_config['database']}@{connection_config['host']}:{connection_config['port']}"
+            self.schema_browser.set_connected(True, db_info)
             
             # Load schema
             self.refresh_schema()
@@ -647,11 +644,8 @@ class PgWarpApp(ctk.CTk):
         try:
             self.db_connection.disconnect()
             
-            # Update UI
-            self.connection_info.configure(text="Not connected")
-            self.connect_btn.configure(state="normal")
-            self.disconnect_btn.configure(state="disabled")
-            self.execute_btn.configure(state="disabled")
+            # Update UI - update schema browser connection state
+            self.schema_browser.set_connected(False)
             
             # Clear schema
             self.current_schema = {}
@@ -742,22 +736,23 @@ class PgWarpApp(ctk.CTk):
     
     def show_about(self):
         """Show about dialog"""
-        about_text = """PgWarp - AI-Powered PostgreSQL Client
+        about_text = """NeuronDB - AI-Powered PostgreSQL Client
 
 Version: 1.0.0
 
 A modern desktop application that brings AI assistance to PostgreSQL database management.
 
 Features:
-• AI-powered query generation
+• AI-powered query generation with Google Gemini
 • Visual schema browser
-• Advanced query editor
+• Advanced query editor with saved queries
 • Built-in PSQL terminal
 • Connection management
+• Excel export support
 
 Built with Python, CustomTkinter, and LangChain.
 """
-        messagebox.showinfo("About PgWarp", about_text)
+        messagebox.showinfo("About NeuronDB", about_text)
     
     def execute_query_callback(self, query: str):
         """Callback for executing queries from query panel"""
@@ -791,9 +786,9 @@ Built with Python, CustomTkinter, and LangChain.
     
     def on_saved_query_select(self, query_text: str):
         """Handle saved query selection from schema browser"""
-        if hasattr(self.query_panel, 'set_query'):
-            self.query_panel.set_query(query_text)
-            self.update_status("Loaded saved query")
+        if hasattr(self.query_panel, 'append_query'):
+            self.query_panel.append_query(query_text)
+            self.update_status("Saved query appended to editor")
     
     def update_status(self, message: str):
         """Update status bar message"""
@@ -815,5 +810,5 @@ Built with Python, CustomTkinter, and LangChain.
             self.destroy()
 
 if __name__ == "__main__":
-    app = PgWarpApp()
+    app = NeuronDBApp()
     app.mainloop()
