@@ -60,7 +60,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         self.scrollable_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
         # Main frame inside scrollable frame
-        main_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="#F5EFE7")
+        main_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="#F5EFE7", corner_radius=8)
         main_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Title
@@ -72,7 +72,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         title_label.pack(pady=(0, 20))
         
         # Saved connections section
-        saved_frame = ctk.CTkFrame(main_frame, fg_color="#E8DFD0")
+        saved_frame = ctk.CTkFrame(main_frame, fg_color="#E8DFD0", corner_radius=8)
         saved_frame.pack(fill="x", pady=(0, 25))
         
         saved_label = ctk.CTkLabel(
@@ -83,7 +83,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         saved_label.pack(pady=(15, 10))
         
         # Connections listbox frame
-        listbox_frame = ctk.CTkFrame(saved_frame, fg_color="#E8DFD0")
+        listbox_frame = ctk.CTkFrame(saved_frame, fg_color="#E8DFD0", corner_radius=8)
         listbox_frame.pack(fill="x", padx=15, pady=(0, 15))
         
         # Create listbox with scrollbar
@@ -122,7 +122,8 @@ class ConnectionDialog(ctk.CTkToplevel):
             state="disabled",
             height=32,
             width=90,
-            font=ctk.CTkFont(size=12)
+            font=ctk.CTkFont(size=12),
+            corner_radius=6
         )
         self.connect_btn.pack(side="left", padx=(0, 8), pady=8)
         
@@ -133,7 +134,8 @@ class ConnectionDialog(ctk.CTkToplevel):
             state="disabled",
             height=32,
             width=70,
-            font=ctk.CTkFont(size=12)
+            font=ctk.CTkFont(size=12),
+            corner_radius=6
         )
         self.edit_btn.pack(side="left", padx=8, pady=8)
         
@@ -146,12 +148,13 @@ class ConnectionDialog(ctk.CTkToplevel):
             hover_color="#87795A",
             height=32,
             width=80,
-            font=ctk.CTkFont(size=12)
+            font=ctk.CTkFont(size=12),
+            corner_radius=6
         )
         self.delete_btn.pack(side="left", padx=8, pady=8)
         
         # Separator
-        separator = ctk.CTkFrame(main_frame, height=3, fg_color="#9B8F5E")
+        separator = ctk.CTkFrame(main_frame, height=3, fg_color="#9B8F5E", corner_radius=2)
         separator.pack(fill="x", pady=(0, 25))
         
         # New connection section
@@ -163,23 +166,23 @@ class ConnectionDialog(ctk.CTkToplevel):
         new_conn_label.pack(pady=(0, 15))
         
         # Connection form
-        form_frame = ctk.CTkFrame(main_frame, fg_color="#E8DFD0")
+        form_frame = ctk.CTkFrame(main_frame, fg_color="#E8DFD0", corner_radius=8)
         form_frame.pack(fill="x", pady=(0, 20))
         
         # Connection name
         ctk.CTkLabel(form_frame, text="Connection Name:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=15, pady=(15, 5))
-        self.name_entry = ctk.CTkEntry(form_frame, placeholder_text="My Database", height=32, font=ctk.CTkFont(size=12))
+        self.name_entry = ctk.CTkEntry(form_frame, placeholder_text="My Database", height=32, font=ctk.CTkFont(size=12), corner_radius=6)
         self.name_entry.pack(fill="x", padx=15, pady=(0, 15))
         
         # Host
         ctk.CTkLabel(form_frame, text="Host:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=15, pady=(0, 5))
-        self.host_entry = ctk.CTkEntry(form_frame, placeholder_text="localhost", height=32, font=ctk.CTkFont(size=12))
+        self.host_entry = ctk.CTkEntry(form_frame, placeholder_text="localhost", height=32, font=ctk.CTkFont(size=12), corner_radius=6)
         self.host_entry.pack(fill="x", padx=15, pady=(0, 15))
         self.host_entry.insert(0, "localhost")  # Default value
         
         # Port
         ctk.CTkLabel(form_frame, text="Port:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=15, pady=(0, 5))
-        self.port_entry = ctk.CTkEntry(form_frame, placeholder_text="5432", height=32, font=ctk.CTkFont(size=12))
+        self.port_entry = ctk.CTkEntry(form_frame, placeholder_text="5432", height=32, font=ctk.CTkFont(size=12), corner_radius=6)
         self.port_entry.pack(fill="x", padx=15, pady=(0, 15))
         self.port_entry.insert(0, "5432")  # Default value
         
@@ -188,18 +191,18 @@ class ConnectionDialog(ctk.CTkToplevel):
         db_note = ctk.CTkLabel(form_frame, text="(Initial database to connect to - usually 'postgres')", 
                               font=ctk.CTkFont(size=10), text_color="#8B7355")
         db_note.pack(anchor="w", padx=15)
-        self.database_entry = ctk.CTkEntry(form_frame, placeholder_text="postgres", height=32, font=ctk.CTkFont(size=12))
+        self.database_entry = ctk.CTkEntry(form_frame, placeholder_text="postgres", height=32, font=ctk.CTkFont(size=12), corner_radius=6)
         self.database_entry.pack(fill="x", padx=15, pady=(5, 15))
         self.database_entry.insert(0, "postgres")  # Default value
         
         # Username
         ctk.CTkLabel(form_frame, text="Username:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=15, pady=(0, 5))
-        self.username_entry = ctk.CTkEntry(form_frame, placeholder_text="postgres", height=32, font=ctk.CTkFont(size=12))
+        self.username_entry = ctk.CTkEntry(form_frame, placeholder_text="postgres", height=32, font=ctk.CTkFont(size=12), corner_radius=6)
         self.username_entry.pack(fill="x", padx=15, pady=(0, 15))
         
         # Password
         ctk.CTkLabel(form_frame, text="Password:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=15, pady=(0, 5))
-        self.password_entry = ctk.CTkEntry(form_frame, placeholder_text="password", show="*", height=32, font=ctk.CTkFont(size=12))
+        self.password_entry = ctk.CTkEntry(form_frame, placeholder_text="password", show="*", height=32, font=ctk.CTkFont(size=12), corner_radius=6)
         self.password_entry.pack(fill="x", padx=15, pady=(0, 15))
         
         # Dialog buttons
@@ -212,7 +215,8 @@ class ConnectionDialog(ctk.CTkToplevel):
             command=self.test_connection,
             height=36,
             width=140,
-            font=ctk.CTkFont(size=12)
+            font=ctk.CTkFont(size=12),
+            corner_radius=6
         )
         self.test_btn.pack(side="left", padx=(15, 8), pady=10)
         
@@ -222,7 +226,8 @@ class ConnectionDialog(ctk.CTkToplevel):
             command=self.save_connection,
             height=36,
             width=80,
-            font=ctk.CTkFont(size=12)
+            font=ctk.CTkFont(size=12),
+            corner_radius=6
         )
         self.save_btn.pack(side="left", padx=8, pady=10)
         
@@ -234,7 +239,8 @@ class ConnectionDialog(ctk.CTkToplevel):
             width=100,
             font=ctk.CTkFont(size=12),
             fg_color="#9B8F5E",
-            hover_color="#87795A"
+            hover_color="#87795A",
+            corner_radius=6
         )
         self.connect_now_btn.pack(side="left", padx=8, pady=10)
         
@@ -246,7 +252,8 @@ class ConnectionDialog(ctk.CTkToplevel):
             width=140,
             font=ctk.CTkFont(size=12),
             fg_color="#9B8F5E",
-            hover_color="#87795A"
+            hover_color="#87795A",
+            corner_radius=6
         )
         self.save_connect_btn.pack(side="left", padx=8, pady=10)
         

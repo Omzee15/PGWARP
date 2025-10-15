@@ -31,7 +31,8 @@ class DatabaseConnection:
                 'host': host,
                 'port': port,
                 'database': database,
-                'username': username
+                'username': username,
+                'password': password  # Store password in memory for psql terminal
             }
             
             logger.info(f"Connected to database: {database}@{host}:{port}")

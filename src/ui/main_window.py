@@ -181,7 +181,7 @@ class NeuronDBApp(ctk.CTk):
         self.main_paned.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
         
         # Left panel - Schema browser
-        self.left_frame = ctk.CTkFrame(self.main_paned, width=350, fg_color="#E8DFD0")
+        self.left_frame = ctk.CTkFrame(self.main_paned, width=350, fg_color="#E8DFD0", corner_radius=8)
         self.main_paned.add(self.left_frame, width=350, minsize=280)
         
         # Schema browser (will be fully initialized after query panel)
@@ -192,7 +192,7 @@ class NeuronDBApp(ctk.CTk):
         self.main_paned.add(self.right_paned, minsize=500)
         
         # Query panel
-        self.query_frame = ctk.CTkFrame(self.right_paned, height=400)
+        self.query_frame = ctk.CTkFrame(self.right_paned, height=400, corner_radius=8)
         self.right_paned.add(self.query_frame, height=400, minsize=250)
         
         # Create tabbed interface for query tools
@@ -237,7 +237,7 @@ class NeuronDBApp(ctk.CTk):
         self.psql_terminal.pack(fill="both", expand=True)
         
         # Results panel
-        self.results_frame = ctk.CTkFrame(self.right_paned, height=400)
+        self.results_frame = ctk.CTkFrame(self.right_paned, height=400, corner_radius=8)
         self.right_paned.add(self.results_frame, height=400, minsize=200)
         
         # Create results display
@@ -250,7 +250,7 @@ class NeuronDBApp(ctk.CTk):
         self.results_frame.grid_rowconfigure(1, weight=1)
         
         # Results header
-        results_header = ctk.CTkFrame(self.results_frame, height=45, fg_color="#E8DFD0")
+        results_header = ctk.CTkFrame(self.results_frame, height=45, fg_color="#E8DFD0", corner_radius=8)
         results_header.grid(row=0, column=0, sticky="ew", padx=0, pady=0)
         results_header.grid_columnconfigure(0, weight=1)
         
@@ -275,7 +275,8 @@ class NeuronDBApp(ctk.CTk):
             height=32,
             state="disabled",
             fg_color="#9B8F5E",
-            hover_color="#87795A"
+            hover_color="#87795A",
+            corner_radius=6
         )
         self.export_csv_btn.grid(row=0, column=0, padx=(0, 5))
         
@@ -288,12 +289,13 @@ class NeuronDBApp(ctk.CTk):
             height=32,
             state="disabled",
             fg_color="#9B8F5E",
-            hover_color="#87795A"
+            hover_color="#87795A",
+            corner_radius=6
         )
         self.export_excel_btn.grid(row=0, column=1, padx=(5, 0))
         
         # Results table frame
-        table_frame = ctk.CTkFrame(self.results_frame)
+        table_frame = ctk.CTkFrame(self.results_frame, corner_radius=8)
         table_frame.grid(row=1, column=0, sticky="nsew", padx=0, pady=0)
         table_frame.grid_columnconfigure(0, weight=1)
         table_frame.grid_rowconfigure(0, weight=1)
@@ -314,6 +316,16 @@ class NeuronDBApp(ctk.CTk):
         self.results_tree.grid(row=0, column=0, sticky="nsew", padx=(1, 0), pady=(1, 0))
         results_v_scroll.grid(row=0, column=1, sticky="ns", pady=(1, 0))
         results_h_scroll.grid(row=1, column=0, sticky="ew", padx=(1, 0))
+        
+        # Bind cell selection events
+        self.results_tree.bind("<Button-1>", self.on_results_cell_click)
+        self.results_tree.bind("<Double-1>", self.on_results_cell_double_click)
+        self.results_tree.bind("<Button-3>", self.on_results_right_click)
+        
+        # Cell selection state
+        self.selected_cell_row = None
+        self.selected_cell_column = None
+        self.selected_cell_value = None
         
         # Configure results styling
         self.configure_results_style()
@@ -369,6 +381,211 @@ class NeuronDBApp(ctk.CTk):
                         troughcolor="#F5EFE7", 
                         borderwidth=1,
                         arrowcolor="#3E2723")
+    
+    def on_results_cell_click(self, event):
+        """Handle single click on results table cell"""
+        # Identify which cell was clicked
+        region = self.results_tree.identify_region(event.x, event.y)
+        
+        if region == "cell":
+            # Get the row
+            row_id = self.results_tree.identify_row(event.y)
+            if not row_id:
+                return
+            
+            # Get the column
+            column_id = self.results_tree.identify_column(event.x)
+            if not column_id:
+                return
+            
+            # Convert column_id to column name
+            if column_id == "#0":
+                # Clicked on row number column
+                return
+            
+            # Get column index (columns are #1, #2, etc.)
+            col_index = int(column_id.replace("#", "")) - 1
+            if col_index < 0 or col_index >= len(self.current_columns):
+                return
+            
+            column_name = self.current_columns[col_index]
+            
+            # Get the row data
+            row_index = int(self.results_tree.item(row_id, "text")) - 1
+            if row_index < 0 or row_index >= len(self.current_results):
+                return
+            
+            # Get cell value
+            cell_value = self.current_results[row_index].get(column_name, "")
+            
+            # Store selected cell info
+            self.selected_cell_row = row_index
+            self.selected_cell_column = column_name
+            self.selected_cell_value = cell_value
+            
+            # Update status bar to show selected cell info
+            value_preview = str(cell_value)
+            if len(value_preview) > 50:
+                value_preview = value_preview[:47] + "..."
+            
+            self.status_label.configure(
+                text=f"Selected: Row {row_index + 1}, {column_name} = {value_preview}"
+            )
+    
+    def on_results_cell_double_click(self, event):
+        """Handle double-click on results table cell to copy value"""
+        if self.selected_cell_value is not None:
+            # Copy to clipboard
+            self.clipboard_clear()
+            self.clipboard_append(str(self.selected_cell_value))
+            
+            # Show confirmation
+            self.status_label.configure(
+                text=f"Copied to clipboard: {self.selected_cell_column}"
+            )
+            
+            # Flash the status bar
+            self.after(2000, lambda: self.status_label.configure(text="Ready"))
+    
+    def on_results_right_click(self, event):
+        """Handle right-click on results table cell - show context menu"""
+        # First, select the cell
+        self.on_results_cell_click(event)
+        
+        if self.selected_cell_value is None:
+            return
+        
+        # Create context menu
+        context_menu = tk.Menu(self, tearoff=0)
+        context_menu.configure(
+            background="#F5EFE7",
+            foreground="#3E2723",
+            activebackground="#9B8F5E",
+            activeforeground="white",
+            font=("Segoe UI", 10)
+        )
+        
+        context_menu.add_command(
+            label=f"📋 Copy Cell ({self.selected_cell_column})",
+            command=self.copy_selected_cell
+        )
+        
+        context_menu.add_command(
+            label="📄 Copy Row",
+            command=self.copy_selected_row
+        )
+        
+        context_menu.add_separator()
+        
+        context_menu.add_command(
+            label="📊 View Full Value",
+            command=self.view_full_cell_value
+        )
+        
+        # Show menu at cursor position
+        try:
+            context_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            context_menu.grab_release()
+    
+    def copy_selected_cell(self):
+        """Copy the selected cell value to clipboard"""
+        if self.selected_cell_value is not None:
+            self.clipboard_clear()
+            self.clipboard_append(str(self.selected_cell_value))
+            self.status_label.configure(text=f"✓ Copied: {self.selected_cell_column}")
+            self.after(2000, lambda: self.status_label.configure(text="Ready"))
+    
+    def copy_selected_row(self):
+        """Copy the entire selected row to clipboard"""
+        if self.selected_cell_row is not None and self.selected_cell_row < len(self.current_results):
+            row_data = self.current_results[self.selected_cell_row]
+            
+            # Format as tab-separated values
+            row_values = [str(row_data.get(col, "")) for col in self.current_columns]
+            row_text = "\t".join(row_values)
+            
+            self.clipboard_clear()
+            self.clipboard_append(row_text)
+            self.status_label.configure(text=f"✓ Copied row {self.selected_cell_row + 1}")
+            self.after(2000, lambda: self.status_label.configure(text="Ready"))
+    
+    def view_full_cell_value(self):
+        """Show the full cell value in a dialog"""
+        if self.selected_cell_value is None:
+            return
+        
+        # Create a dialog to show full value
+        dialog = tk.Toplevel(self)
+        dialog.title(f"Cell Value: {self.selected_cell_column}")
+        dialog.geometry("600x400")
+        dialog.configure(bg="#F5EFE7")
+        
+        # Make it modal
+        dialog.transient(self)
+        dialog.grab_set()
+        
+        # Title label
+        title_frame = ctk.CTkFrame(dialog, fg_color="#9B8F5E")
+        title_frame.pack(fill="x", padx=0, pady=0)
+        
+        title_label = ctk.CTkLabel(
+            title_frame,
+            text=f"📊 Row {self.selected_cell_row + 1} • {self.selected_cell_column}",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="#FFFFFF"
+        )
+        title_label.pack(pady=8, padx=12)
+        
+        # Text widget to show value
+        text_frame = tk.Frame(dialog, bg="#F5EFE7")
+        text_frame.pack(fill="both", expand=True, padx=12, pady=12)
+        
+        text_widget = tk.Text(
+            text_frame,
+            wrap="word",
+            bg="#F5EFE7",
+            fg="#3E2723",
+            font=("Consolas", 11),
+            padx=10,
+            pady=10
+        )
+        text_widget.pack(side="left", fill="both", expand=True)
+        
+        # Scrollbar
+        scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=text_widget.yview)
+        scrollbar.pack(side="right", fill="y")
+        text_widget.configure(yscrollcommand=scrollbar.set)
+        
+        # Insert value
+        text_widget.insert("1.0", str(self.selected_cell_value))
+        text_widget.configure(state="disabled")
+        
+        # Button frame
+        button_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        button_frame.pack(fill="x", padx=12, pady=(0, 12))
+        
+        copy_btn = ctk.CTkButton(
+            button_frame,
+            text="📋 Copy",
+            command=lambda: [self.clipboard_clear(), 
+                           self.clipboard_append(str(self.selected_cell_value)),
+                           self.status_label.configure(text="✓ Copied to clipboard")],
+            fg_color="#9B8F5E",
+            hover_color="#87795A",
+            width=100
+        )
+        copy_btn.pack(side="left", padx=5)
+        
+        close_btn = ctk.CTkButton(
+            button_frame,
+            text="Close",
+            command=dialog.destroy,
+            fg_color="#8B7355",
+            hover_color="#6B5E45",
+            width=100
+        )
+        close_btn.pack(side="left", padx=5)
     
     def display_results_callback(self, results, columns):
         """Callback to display results from query panel"""

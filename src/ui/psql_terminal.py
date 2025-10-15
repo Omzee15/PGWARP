@@ -3,7 +3,7 @@ PSQL Terminal component for interactive PostgreSQL command-line interface
 """
 
 import tkinter as tk
-from tkinter import scrolledtext, ttk
+from tkinter import scrolledtext, ttk, simpledialog
 import customtkinter as ctk
 import subprocess
 import threading
@@ -33,7 +33,7 @@ class PSQLTerminal(ctk.CTkFrame):
         self.grid_rowconfigure(1, weight=1)
         
         # Header
-        header_frame = ctk.CTkFrame(self, height=50)
+        header_frame = ctk.CTkFrame(self, height=50, corner_radius=8)
         header_frame.grid(row=0, column=0, sticky="ew", padx=8, pady=8)
         header_frame.grid_columnconfigure(0, weight=1)
         
@@ -51,7 +51,8 @@ class PSQLTerminal(ctk.CTkFrame):
             command=self.connect_psql,
             width=120,
             height=32,
-            state="disabled"
+            state="disabled",
+            corner_radius=6
         )
         self.connect_btn.grid(row=0, column=1, padx=12, pady=10)
         
@@ -62,7 +63,8 @@ class PSQLTerminal(ctk.CTkFrame):
             command=self.disconnect_psql,
             width=120,
             height=32,
-            state="disabled"
+            state="disabled",
+            corner_radius=6
         )
         self.disconnect_btn.grid(row=0, column=2, padx=8, pady=10)
         
@@ -72,12 +74,13 @@ class PSQLTerminal(ctk.CTkFrame):
             text="Clear", 
             command=self.clear_terminal,
             width=100,
-            height=32
+            height=32,
+            corner_radius=6
         )
         self.clear_btn.grid(row=0, column=3, padx=(8, 15), pady=10)
         
         # Terminal area
-        terminal_frame = ctk.CTkFrame(self)
+        terminal_frame = ctk.CTkFrame(self, corner_radius=8)
         terminal_frame.grid(row=1, column=0, sticky="nsew", padx=8, pady=(0, 8))
         terminal_frame.grid_columnconfigure(0, weight=1)
         terminal_frame.grid_rowconfigure(0, weight=1)
@@ -119,7 +122,7 @@ class PSQLTerminal(ctk.CTkFrame):
         terminal_scroll.grid(row=0, column=1, sticky="ns", pady=(1, 0))
         
         # Command input frame
-        input_frame = ctk.CTkFrame(self, height=50)
+        input_frame = ctk.CTkFrame(self, height=50, corner_radius=8)
         input_frame.grid(row=2, column=0, sticky="ew", padx=8, pady=(0, 8))
         input_frame.grid_columnconfigure(1, weight=1)
         
@@ -137,7 +140,8 @@ class PSQLTerminal(ctk.CTkFrame):
             input_frame, 
             font=ctk.CTkFont(family="Consolas", size=12),
             height=32,
-            state="disabled"
+            state="disabled",
+            corner_radius=6
         )
         self.command_entry.grid(row=0, column=1, sticky="ew", padx=8, pady=12)
         self.command_entry.bind("<Return>", self.execute_command)
@@ -151,7 +155,8 @@ class PSQLTerminal(ctk.CTkFrame):
             command=self.execute_command,
             width=100,
             height=32,
-            state="disabled"
+            state="disabled",
+            corner_radius=6
         )
         self.send_btn.grid(row=0, column=2, padx=(8, 15), pady=12)
         
@@ -190,6 +195,21 @@ class PSQLTerminal(ctk.CTkFrame):
             # Get connection info
             conn_info = self.connection.connection_info
             
+            # Check if password is available, if not, prompt for it
+            password = conn_info.get('password', '')
+            if not password:
+                # Prompt user for password within the app
+                password = simpledialog.askstring(
+                    "Password Required",
+                    f"Enter password for user '{conn_info['username']}':",
+                    show='*',
+                    parent=self
+                )
+                
+                if not password:
+                    self.write_to_terminal("Connection cancelled: Password required.\n", color="#CD853F")
+                    return
+            
             # Construct psql command
             cmd = [
                 "psql",
@@ -199,10 +219,9 @@ class PSQLTerminal(ctk.CTkFrame):
                 "-d", conn_info['database']
             ]
             
-            # Set environment for password (if available)
+            # Set environment for password
             env = os.environ.copy()
-            if 'password' in conn_info and conn_info['password']:
-                env['PGPASSWORD'] = conn_info['password']
+            env['PGPASSWORD'] = password
             
             # Start psql process
             self.process = subprocess.Popen(

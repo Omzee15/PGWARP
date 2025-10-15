@@ -37,7 +37,7 @@ class ConfigView(ctk.CTkFrame):
         # Database Settings Section
         self.create_section(main_container, "🗄️ Database Settings")
         
-        db_frame = ctk.CTkFrame(main_container, fg_color="#E8DFD0")
+        db_frame = ctk.CTkFrame(main_container, fg_color="#E8DFD0", corner_radius=8)
         db_frame.pack(fill="x", pady=(0, 20))
         
         # Default connection settings
@@ -49,7 +49,7 @@ class ConfigView(ctk.CTkFrame):
         # AI Settings Section
         self.create_section(main_container, "🤖 AI Assistant Settings")
         
-        ai_frame = ctk.CTkFrame(main_container, fg_color="#E8DFD0")
+        ai_frame = ctk.CTkFrame(main_container, fg_color="#E8DFD0", corner_radius=8)
         ai_frame.pack(fill="x", pady=(0, 20))
         
         self.create_setting_row(ai_frame, "API Key:", "••••••••••••", is_password=True)
@@ -60,7 +60,7 @@ class ConfigView(ctk.CTkFrame):
         # Editor Settings Section
         self.create_section(main_container, "📝 Editor Settings")
         
-        editor_frame = ctk.CTkFrame(main_container, fg_color="#E8DFD0")
+        editor_frame = ctk.CTkFrame(main_container, fg_color="#E8DFD0", corner_radius=8)
         editor_frame.pack(fill="x", pady=(0, 20))
         
         self.create_setting_row(editor_frame, "Font Family:", "Consolas")
@@ -74,7 +74,7 @@ class ConfigView(ctk.CTkFrame):
         # Display Settings Section
         self.create_section(main_container, "🎨 Display Settings")
         
-        display_frame = ctk.CTkFrame(main_container, fg_color="#E8DFD0")
+        display_frame = ctk.CTkFrame(main_container, fg_color="#E8DFD0", corner_radius=8)
         display_frame.pack(fill="x", pady=(0, 20))
         
         self.create_setting_row(display_frame, "Max Result Rows:", "10000")
@@ -84,7 +84,7 @@ class ConfigView(ctk.CTkFrame):
         # Export Settings Section
         self.create_section(main_container, "📤 Export Settings")
         
-        export_frame = ctk.CTkFrame(main_container, fg_color="#E8DFD0")
+        export_frame = ctk.CTkFrame(main_container, fg_color="#E8DFD0", corner_radius=8)
         export_frame.pack(fill="x", pady=(0, 20))
         
         self.create_setting_row(export_frame, "Default Export Format:", "Excel")
@@ -102,7 +102,8 @@ class ConfigView(ctk.CTkFrame):
             height=40,
             font=ctk.CTkFont(size=14, weight="bold"),
             fg_color="#9B8F5E",
-            hover_color="#87795A"
+            hover_color="#87795A",
+            corner_radius=6
         )
         save_btn.pack(side="left", padx=10)
         
@@ -114,14 +115,15 @@ class ConfigView(ctk.CTkFrame):
             hover_color="#87795A",
             width=150,
             height=40,
-            font=ctk.CTkFont(size=14, weight="bold")
+            font=ctk.CTkFont(size=14, weight="bold"),
+            corner_radius=6
         )
         reset_btn.pack(side="left", padx=10)
         
         # About Section
         self.create_section(main_container, "ℹ️ About NeuronDB")
         
-        about_frame = ctk.CTkFrame(main_container, fg_color="#E8DFD0")
+        about_frame = ctk.CTkFrame(main_container, fg_color="#E8DFD0", corner_radius=8)
         about_frame.pack(fill="x", pady=(0, 20))
         
         about_text = """
@@ -165,7 +167,7 @@ Built with Python, CustomTkinter, and LangChain.
         label.pack(side="left")
         
         # Separator line
-        separator = ctk.CTkFrame(section_frame, height=2, fg_color="#9B8F5E")
+        separator = ctk.CTkFrame(section_frame, height=2, fg_color="#9B8F5E", corner_radius=1)
         separator.pack(side="left", fill="x", expand=True, padx=(10, 0))
     
     def create_setting_row(self, parent, label_text: str, default_value: str, is_password: bool = False):
@@ -187,7 +189,8 @@ Built with Python, CustomTkinter, and LangChain.
             row_frame,
             font=ctk.CTkFont(size=11),
             width=250,
-            show="•" if is_password else None
+            show="•" if is_password else None,
+            corner_radius=6
         )
         entry.insert(0, default_value)
         entry.pack(side="left")

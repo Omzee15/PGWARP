@@ -111,24 +111,55 @@ class DiagramCanvas(tk.Canvas):
         self.tables = {}
         self.relationships = []
         
-        # Colors
-        self.table_bg = "#E8DFD0"
-        self.table_border = "#9B8F5E"
-        self.header_bg = "#9B8F5E"
-        self.header_fg = "#FFFFFF"
-        self.text_color = "#3E2723"
-        self.pk_color = "#87795A"
-        self.fk_color = "#C4756C"
-        self.line_color = "#9B8F5E"
+        # Colors - Following app's warm beige/olive theme
+        self.table_bg = "#FFFFFF"           # White background for table body
+        self.table_border = "#9B8F5E"       # Olive border
+        self.header_bg = "#9B8F5E"          # Olive header (primary color)
+        self.header_fg = "#FFFFFF"          # White text on olive
+        self.text_color = "#3E2723"         # Dark brown for regular text
+        self.pk_color = "#9B8F5E"           # Olive for primary keys
+        self.fk_color = "#8B7355"           # Medium brown for foreign keys
+        self.line_color = "#9B8F5E"         # Olive for relationship lines
+        self.null_indicator_color = "#C4756C"  # Red for nullable indicators
+        self.column_type_color = "#8B7355"  # Medium brown for data types
         
-        # Enable dragging
+        # Zoom settings
+        self.zoom_level = 1.0
+        self.min_zoom = 0.3
+        self.max_zoom = 3.0
+        self.zoom_step = 0.1
+        self.zoom_callback = None  # Callback to update zoom label
+        
+        # Pan/drag canvas settings
+        self.panning = False
+        self.pan_start_x = 0
+        self.pan_start_y = 0
+        
+        # Table dragging settings
+        self.dragging_table = None
+        self.drag_offset_x = 0
+        self.drag_offset_y = 0
+        self.dragging_header = False
+        
+        # Enable panning with middle mouse or Ctrl+drag
+        self.bind("<Button-2>", self.start_pan)  # Middle mouse button
+        self.bind("<B2-Motion>", self.do_pan)
+        self.bind("<ButtonRelease-2>", self.stop_pan)
+        
+        # Also support Ctrl+Left click for panning
+        self.bind("<Control-Button-1>", self.start_pan)
+        self.bind("<Control-B1-Motion>", self.do_pan)
+        self.bind("<Control-ButtonRelease-1>", self.stop_pan)
+        
+        # Table dragging
         self.bind("<Button-1>", self.on_click)
         self.bind("<B1-Motion>", self.on_drag)
         self.bind("<ButtonRelease-1>", self.on_release)
         
-        self.dragging_table = None
-        self.drag_offset_x = 0
-        self.drag_offset_y = 0
+        # Enable zoom with mouse wheel
+        self.bind("<MouseWheel>", self.on_mouse_wheel)  # Windows/Mac
+        self.bind("<Button-4>", self.on_mouse_wheel)    # Linux scroll up
+        self.bind("<Button-5>", self.on_mouse_wheel)    # Linux scroll down
     
     def draw_diagram(self, tables: Dict[str, Table], relationships: List[ForeignKey]):
         """Draw the complete diagram"""
@@ -160,10 +191,10 @@ class DiagramCanvas(tk.Canvas):
         num_tables = len(tables_list)
         cols = max(3, int(num_tables ** 0.5))
         
-        x_spacing = 250
-        y_spacing = 200
-        x_start = 50
-        y_start = 50
+        x_spacing = 280
+        y_spacing = 220
+        x_start = 60
+        y_start = 60
         
         for i, table in enumerate(tables_list):
             col = i % cols
@@ -173,128 +204,254 @@ class DiagramCanvas(tk.Canvas):
             table.y = y_start + row * y_spacing
             
             # Calculate table height based on number of columns
-            table.height = 40 + len(table.columns) * 25
+            # Header (40px) + columns (24px each) + padding (16px)
+            table.height = 40 + len(table.columns) * 24 + 16
+            table.width = 220  # Fixed width
     
     def draw_table(self, table: Table):
-        """Draw a single table"""
-        x, y = table.x, table.y
-        width, height = table.width, table.height
+        """Draw a single table with a clean, professional look"""
+        # Apply zoom to positions
+        x = table.x * self.zoom_level
+        y = table.y * self.zoom_level
+        width = table.width * self.zoom_level
+        height = table.height * self.zoom_level
         
-        # Draw table border
+        # Calculate font sizes based on zoom level
+        title_font_size = max(8, int(13 * self.zoom_level))
+        icon_font_size = max(6, int(10 * self.zoom_level))
+        text_font_size = max(6, int(10 * self.zoom_level))
+        type_font_size = max(6, int(9 * self.zoom_level))
+        
+        # Scale other dimensions
+        shadow_offset = 3 * self.zoom_level
+        header_height = 40 * self.zoom_level
+        
+        # Draw shadow effect (subtle depth)
+        self.create_rectangle(
+            x + shadow_offset, y + shadow_offset, 
+            x + width + shadow_offset, y + height + shadow_offset,
+            fill="#D9CDBF",
+            outline="",
+            tags=("table", f"table_{table.name}", "shadow")
+        )
+        
+        # Draw main table background
         self.create_rectangle(
             x, y, x + width, y + height,
             fill=self.table_bg,
             outline=self.table_border,
-            width=2,
-            tags=("table", f"table_{table.name}")
+            width=max(1, int(2 * self.zoom_level)),
+            tags=("table", f"table_{table.name}", "body")
         )
         
-        # Draw header
-        header_height = 35
+        # Draw header with rounded appearance
         self.create_rectangle(
             x, y, x + width, y + header_height,
             fill=self.header_bg,
-            outline=self.table_border,
-            width=2,
-            tags=("table", f"table_{table.name}")
+            outline="",
+            tags=("table", f"table_{table.name}", "header", f"header_{table.name}")
         )
         
-        # Table name
+        # Table name in header
         self.create_text(
             x + width / 2, y + header_height / 2,
             text=table.name,
             fill=self.header_fg,
-            font=("Segoe UI", 12, "bold"),
-            tags=("table", f"table_{table.name}")
+            font=("Segoe UI", title_font_size, "bold"),
+            tags=("table", f"table_{table.name}", "header", f"header_{table.name}")
         )
         
-        # Draw columns
-        y_offset = y + header_height + 5
-        for col in table.columns:
-            # Column icon
-            if col.is_pk:
-                icon = "🔑"
-                color = self.pk_color
-            elif any(fk.from_column == col.name for fk in table.foreign_keys):
-                icon = "🔗"
-                color = self.fk_color
-            else:
-                icon = "▪"
-                color = self.text_color
+        # Draw separator line below header
+        self.create_line(
+            x, y + header_height,
+            x + width, y + header_height,
+            fill=self.table_border,
+            width=max(1, int(1 * self.zoom_level)),
+            tags=("table", f"table_{table.name}", "separator")
+        )
+        
+        # Draw columns with better formatting
+        row_height = 24 * self.zoom_level
+        y_offset = y + header_height + 12 * self.zoom_level
+        
+        for i, col in enumerate(table.columns):
+            # Alternate row background for better readability
+            if i % 2 == 1:
+                self.create_rectangle(
+                    x + 1, y_offset - 8 * self.zoom_level,
+                    x + width - 1, y_offset + 16 * self.zoom_level,
+                    fill="#F9F6F2",
+                    outline="",
+                    tags=("table", f"table_{table.name}", "row_bg")
+                )
             
-            # Column text
-            col_text = f"{icon} {col.name}: {col.data_type}"
+            # Primary key icon
+            if col.is_pk:
+                self.create_text(
+                    x + 12 * self.zoom_level, y_offset,
+                    text="🔑",
+                    font=("Segoe UI", icon_font_size),
+                    anchor="w",
+                    tags=("table", f"table_{table.name}", "icon")
+                )
+                name_x_offset = 30 * self.zoom_level
+                name_color = self.pk_color
+                name_font = ("Segoe UI", text_font_size, "bold")
+            # Foreign key icon
+            elif any(fk.from_column == col.name for fk in table.foreign_keys):
+                self.create_text(
+                    x + 12 * self.zoom_level, y_offset,
+                    text="🔗",
+                    font=("Segoe UI", icon_font_size),
+                    anchor="w",
+                    tags=("table", f"table_{table.name}", "icon")
+                )
+                name_x_offset = 30 * self.zoom_level
+                name_color = self.fk_color
+                name_font = ("Segoe UI", text_font_size)
+            else:
+                name_x_offset = 12 * self.zoom_level
+                name_color = self.text_color
+                name_font = ("Segoe UI", text_font_size)
+            
+            # Column name
             self.create_text(
-                x + 10, y_offset,
-                text=col_text,
-                fill=color,
-                font=("Consolas", 9),
+                x + name_x_offset, y_offset,
+                text=col.name,
+                fill=name_color,
+                font=name_font,
                 anchor="w",
-                tags=("table", f"table_{table.name}")
+                tags=("table", f"table_{table.name}", "column_name")
             )
             
-            y_offset += 25
+            # Data type (right-aligned)
+            self.create_text(
+                x + width - 12 * self.zoom_level, y_offset,
+                text=col.data_type,
+                fill=self.column_type_color,
+                font=("Consolas", type_font_size),
+                anchor="e",
+                tags=("table", f"table_{table.name}", "column_type")
+            )
+            
+            y_offset += row_height
     
     def draw_relationship(self, rel: ForeignKey):
-        """Draw a relationship line between tables"""
+        """Draw a relationship line between tables with cleaner styling"""
         if rel.from_table not in self.tables or rel.to_table not in self.tables:
             return
         
         from_table = self.tables[rel.from_table]
         to_table = self.tables[rel.to_table]
         
-        # Calculate connection points (center-right and center-left)
-        from_x = from_table.x + from_table.width
-        from_y = from_table.y + from_table.height / 2
+        # Calculate font size based on zoom
+        label_font_size = max(6, int(9 * self.zoom_level))
         
-        to_x = to_table.x
-        to_y = to_table.y + to_table.height / 2
+        # Apply zoom to positions
+        from_x = (from_table.x + from_table.width) * self.zoom_level
+        from_y = (from_table.y + from_table.height / 2) * self.zoom_level
         
-        # Draw line with arrow
+        to_x = to_table.x * self.zoom_level
+        to_y = (to_table.y + to_table.height / 2) * self.zoom_level
+        
+        # Create a cleaner, orthogonal line path (like in the reference image)
+        mid_x = (from_x + to_x) / 2
+        
+        # Scale line width
+        line_width = max(1, int(2 * self.zoom_level))
+        
+        # Draw line segments
+        # First segment: horizontal from source
         self.create_line(
-            from_x, from_y, to_x, to_y,
+            from_x, from_y, mid_x, from_y,
             fill=self.line_color,
-            width=2,
+            width=line_width,
+            tags="relationship",
+            smooth=True
+        )
+        
+        # Second segment: vertical connector
+        self.create_line(
+            mid_x, from_y, mid_x, to_y,
+            fill=self.line_color,
+            width=line_width,
+            tags="relationship",
+            smooth=True
+        )
+        
+        # Third segment: horizontal to target with arrow
+        arrow_size = max(6, int(10 * self.zoom_level))
+        self.create_line(
+            mid_x, to_y, to_x, to_y,
+            fill=self.line_color,
+            width=line_width,
             arrow=tk.LAST,
+            arrowshape=(arrow_size, arrow_size + 2, arrow_size - 4),
+            tags="relationship",
+            smooth=True
+        )
+        
+        # Draw relationship label with background
+        label_text = f"{rel.from_column} → {rel.to_column}"
+        text_x = mid_x
+        text_y = (from_y + to_y) / 2 - 15 * self.zoom_level
+        
+        # Scale label box
+        box_width = 40 * self.zoom_level
+        box_height = 8 * self.zoom_level
+        
+        # Background for label
+        self.create_rectangle(
+            text_x - box_width, text_y - box_height,
+            text_x + box_width, text_y + box_height,
+            fill="#F5EFE7",
+            outline="#E8DFD0",
             tags="relationship"
         )
         
-        # Draw relationship label
-        mid_x = (from_x + to_x) / 2
-        mid_y = (from_y + to_y) / 2
-        
+        # Label text
         self.create_text(
-            mid_x, mid_y - 10,
-            text=f"{rel.from_column} → {rel.to_column}",
+            text_x, text_y,
+            text=label_text,
             fill=self.text_color,
-            font=("Segoe UI", 8),
+            font=("Segoe UI", label_font_size),
             tags="relationship"
         )
     
     def on_click(self, event):
-        """Handle mouse click"""
+        """Handle mouse click - check if clicking on table header for dragging"""
         x, y = self.canvasx(event.x), self.canvasy(event.y)
         items = self.find_overlapping(x, y, x, y)
         
+        # Check if clicking on a table header
         for item in items:
             tags = self.gettags(item)
             for tag in tags:
-                if tag.startswith("table_"):
-                    table_name = tag[6:]
+                # Check if this is a header
+                if tag.startswith("header_"):
+                    table_name = tag[7:]  # Remove "header_" prefix
                     if table_name in self.tables:
                         self.dragging_table = self.tables[table_name]
-                        self.drag_offset_x = x - self.dragging_table.x
-                        self.drag_offset_y = y - self.dragging_table.y
+                        self.dragging_header = True
+                        # Store original position in canvas coordinates
+                        self.drag_offset_x = x - (self.dragging_table.x * self.zoom_level)
+                        self.drag_offset_y = y - (self.dragging_table.y * self.zoom_level)
+                        # Change cursor to indicate dragging
+                        self.config(cursor="fleur")
                         return
     
     def on_drag(self, event):
-        """Handle mouse drag"""
-        if self.dragging_table:
+        """Handle mouse drag - either drag table or do nothing"""
+        if self.dragging_table and self.dragging_header:
             x, y = self.canvasx(event.x), self.canvasy(event.y)
             
+            # Calculate new position in logical coordinates (unscaled)
+            new_x = (x - self.drag_offset_x) / self.zoom_level
+            new_y = (y - self.drag_offset_y) / self.zoom_level
+            
             # Update table position
-            self.dragging_table.x = x - self.drag_offset_x
-            self.dragging_table.y = y - self.drag_offset_y
+            self.dragging_table.x = new_x
+            self.dragging_table.y = new_y
             
             # Redraw diagram
             self.draw_diagram(self.tables, self.relationships)
@@ -302,6 +459,109 @@ class DiagramCanvas(tk.Canvas):
     def on_release(self, event):
         """Handle mouse release"""
         self.dragging_table = None
+        self.dragging_header = False
+        self.config(cursor="")
+    
+    def start_pan(self, event):
+        """Start panning the canvas view"""
+        self.panning = True
+        self.pan_start_x = event.x
+        self.pan_start_y = event.y
+        self.config(cursor="fleur")
+    
+    def do_pan(self, event):
+        """Pan the canvas view"""
+        if self.panning:
+            # Calculate how much to scroll
+            dx = event.x - self.pan_start_x
+            dy = event.y - self.pan_start_y
+            
+            # Scroll the canvas
+            self.xview_scroll(int(-dx / 10), "units")
+            self.yview_scroll(int(-dy / 10), "units")
+            
+            # Update start position for continuous panning
+            self.pan_start_x = event.x
+            self.pan_start_y = event.y
+    
+    def stop_pan(self, event):
+        """Stop panning the canvas view"""
+        self.panning = False
+        self.config(cursor="")
+    
+    def on_mouse_wheel(self, event):
+        """Handle mouse wheel for zooming"""
+        # Get mouse position in canvas coordinates
+        x = self.canvasx(event.x)
+        y = self.canvasy(event.y)
+        
+        # Determine zoom direction
+        if event.num == 4 or event.delta > 0:  # Scroll up / zoom in
+            self.zoom_in(x, y)
+        elif event.num == 5 or event.delta < 0:  # Scroll down / zoom out
+            self.zoom_out(x, y)
+    
+    def zoom_in(self, focus_x=None, focus_y=None):
+        """Zoom in the entire canvas view"""
+        if self.zoom_level < self.max_zoom:
+            new_zoom = min(self.max_zoom, self.zoom_level + self.zoom_step)
+            self.apply_canvas_zoom(new_zoom, focus_x, focus_y)
+    
+    def zoom_out(self, focus_x=None, focus_y=None):
+        """Zoom out the entire canvas view"""
+        if self.zoom_level > self.min_zoom:
+            new_zoom = max(self.min_zoom, self.zoom_level - self.zoom_step)
+            self.apply_canvas_zoom(new_zoom, focus_x, focus_y)
+    
+    def reset_zoom(self):
+        """Reset zoom to 100%"""
+        self.apply_canvas_zoom(1.0)
+    
+    def apply_canvas_zoom(self, new_zoom, focus_x=None, focus_y=None):
+        """Apply zoom by redrawing everything at new scale"""
+        if not self.tables:
+            self.zoom_level = new_zoom
+            if self.zoom_callback:
+                self.zoom_callback(new_zoom)
+            return
+        
+        # Calculate scale factor
+        scale_factor = new_zoom / self.zoom_level
+        
+        # If no focus point, use center of visible area
+        if focus_x is None or focus_y is None:
+            focus_x = self.canvasx(self.winfo_width() / 2)
+            focus_y = self.canvasy(self.winfo_height() / 2)
+        
+        # Convert focus point to logical coordinates
+        focus_x_logical = focus_x / self.zoom_level
+        focus_y_logical = focus_y / self.zoom_level
+        
+        # Update zoom level
+        old_zoom = self.zoom_level
+        self.zoom_level = new_zoom
+        
+        # Redraw diagram with new zoom (fonts will scale automatically)
+        self.draw_diagram(self.tables, self.relationships)
+        
+        # Adjust scroll position to keep focus point in place
+        new_focus_x = focus_x_logical * self.zoom_level
+        new_focus_y = focus_y_logical * self.zoom_level
+        
+        # Calculate how much to scroll to keep focus centered
+        scroll_x = new_focus_x - focus_x
+        scroll_y = new_focus_y - focus_y
+        
+        # Update the view
+        self.xview_moveto((self.xview()[0] * old_zoom + scroll_x / self.winfo_width()) / new_zoom)
+        self.yview_moveto((self.yview()[0] * old_zoom + scroll_y / self.winfo_height()) / new_zoom)
+        
+        # Update scroll region to fit new size
+        self.update_scroll_region()
+        
+        # Update zoom label if callback is set
+        if self.zoom_callback:
+            self.zoom_callback(new_zoom)
     
     def update_scroll_region(self):
         """Update the scroll region to fit all content"""
@@ -319,20 +579,47 @@ class DBDiagramView(ctk.CTkFrame):
         self.current_tables = {}
         self.current_relationships = []
         
+        # Resizable panel settings
+        self.resizing = False
+        self.left_panel_width = 400
+        self.min_left_width = 250
+        self.max_left_width = 800
+        
         self.create_widgets()
     
     def create_widgets(self):
         """Create the diagram view UI"""
-        # Split into two panels: DBML editor (left) and diagram (right)
+        # Container for panels
+        container = ctk.CTkFrame(self, fg_color="transparent")
+        container.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Left panel - DBML Editor
-        left_panel = ctk.CTkFrame(self, fg_color="#E8DFD0")
-        left_panel.pack(side="left", fill="both", expand=False, padx=(10, 5), pady=10)
-        left_panel.configure(width=400)
+        self.left_panel = ctk.CTkFrame(container, fg_color="#E8DFD0", width=self.left_panel_width, corner_radius=8)
+        self.left_panel.place(x=0, y=0, relheight=1.0)
+        self.left_panel.place_configure(width=self.left_panel_width)
+        
+        # Resizable separator
+        self.separator = ctk.CTkFrame(container, fg_color="#9B8F5E", cursor="sb_h_double_arrow")
+        self.separator.place(x=self.left_panel_width, y=0, relheight=1.0)
+        self.separator.place_configure(width=6)
+        
+        # Bind separator events for resizing
+        self.separator.bind("<Button-1>", self.start_resize)
+        self.separator.bind("<B1-Motion>", self.do_resize)
+        self.separator.bind("<ButtonRelease-1>", self.stop_resize)
+        self.separator.bind("<Enter>", lambda e: self.separator.configure(fg_color="#87795A"))
+        self.separator.bind("<Leave>", lambda e: self.separator.configure(fg_color="#9B8F5E"))
+        
+        # Right panel - Diagram Canvas
+        self.right_panel = ctk.CTkFrame(container, fg_color="#E8DFD0", corner_radius=8)
+        self.right_panel.place(x=self.left_panel_width + 6, y=0, relwidth=1.0, relheight=1.0)
+        
+        # Configure right panel to adjust with left panel width
+        self.bind("<Configure>", self.update_panels)
         
         # DBML Editor Title
         title_label = ctk.CTkLabel(
-            left_panel,
+            self.left_panel,
             text="📝 DBML Schema",
             font=ctk.CTkFont(size=16, weight="bold"),
             text_color="#3E2723"
@@ -341,7 +628,7 @@ class DBDiagramView(ctk.CTkFrame):
         
         # Help text
         help_text = ctk.CTkLabel(
-            left_panel,
+            self.left_panel,
             text="Enter your database schema in DBML format",
             font=ctk.CTkFont(size=10),
             text_color="#8B7355"
@@ -349,7 +636,7 @@ class DBDiagramView(ctk.CTkFrame):
         help_text.pack(pady=(0, 10))
         
         # DBML Text Editor
-        editor_frame = ctk.CTkFrame(left_panel, fg_color="#F5EFE7")
+        editor_frame = ctk.CTkFrame(self.left_panel, fg_color="#F5EFE7", corner_radius=8)
         editor_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         
         self.dbml_text = tk.Text(
@@ -381,7 +668,7 @@ class DBDiagramView(ctk.CTkFrame):
         self.load_sample_dbml()
         
         # Buttons
-        button_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
+        button_frame = ctk.CTkFrame(self.left_panel, fg_color="transparent")
         button_frame.pack(pady=(0, 10))
         
         generate_btn = ctk.CTkButton(
@@ -392,7 +679,8 @@ class DBDiagramView(ctk.CTkFrame):
             width=150,
             height=35,
             fg_color="#9B8F5E",
-            hover_color="#87795A"
+            hover_color="#87795A",
+            corner_radius=6
         )
         generate_btn.pack(side="left", padx=5)
         
@@ -403,25 +691,79 @@ class DBDiagramView(ctk.CTkFrame):
             width=100,
             height=35,
             fg_color="#9B8F5E",
-            hover_color="#87795A"
+            hover_color="#87795A",
+            corner_radius=6
         )
         clear_btn.pack(side="left", padx=5)
         
-        # Right panel - Diagram Canvas
-        right_panel = ctk.CTkFrame(self, fg_color="#E8DFD0")
-        right_panel.pack(side="right", fill="both", expand=True, padx=(5, 10), pady=10)
+        # === Right Panel Content ===
         
-        # Diagram Title
+        # Diagram Title and Zoom Controls
+        header_frame = ctk.CTkFrame(self.right_panel, fg_color="transparent")
+        header_frame.pack(fill="x", pady=(10, 5))
+        
         diagram_title = ctk.CTkLabel(
-            right_panel,
+            header_frame,
             text="🗺️ Entity Relationship Diagram",
             font=ctk.CTkFont(size=16, weight="bold"),
             text_color="#3E2723"
         )
-        diagram_title.pack(pady=(10, 5))
+        diagram_title.pack(side="left", padx=10)
+        
+        # Zoom controls
+        zoom_frame = ctk.CTkFrame(header_frame, fg_color="#E8DFD0", corner_radius=8)
+        zoom_frame.pack(side="right", padx=10)
+        
+        zoom_out_btn = ctk.CTkButton(
+            zoom_frame,
+            text="−",
+            command=lambda: self.canvas.zoom_out(),
+            width=35,
+            height=30,
+            font=ctk.CTkFont(size=18, weight="bold"),
+            fg_color="#9B8F5E",
+            hover_color="#87795A",
+            corner_radius=6
+        )
+        zoom_out_btn.pack(side="left", padx=(5, 0), pady=5)
+        
+        self.zoom_label = ctk.CTkLabel(
+            zoom_frame,
+            text="100%",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color="#3E2723",
+            width=50
+        )
+        self.zoom_label.pack(side="left", padx=5, pady=5)
+        
+        zoom_in_btn = ctk.CTkButton(
+            zoom_frame,
+            text="+",
+            command=lambda: self.canvas.zoom_in(),
+            width=35,
+            height=30,
+            font=ctk.CTkFont(size=18, weight="bold"),
+            fg_color="#9B8F5E",
+            hover_color="#87795A",
+            corner_radius=6
+        )
+        zoom_in_btn.pack(side="left", padx=0, pady=5)
+        
+        reset_zoom_btn = ctk.CTkButton(
+            zoom_frame,
+            text="⟲",
+            command=lambda: self.canvas.reset_zoom(),
+            width=35,
+            height=30,
+            font=ctk.CTkFont(size=16, weight="bold"),
+            fg_color="#9B8F5E",
+            hover_color="#87795A",
+            corner_radius=6
+        )
+        reset_zoom_btn.pack(side="left", padx=(5, 5), pady=5)
         
         # Canvas frame
-        canvas_frame = ctk.CTkFrame(right_panel, fg_color="#F5EFE7")
+        canvas_frame = ctk.CTkFrame(self.right_panel, fg_color="#F5EFE7", corner_radius=8)
         canvas_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         
         # Create canvas with scrollbars
@@ -441,12 +783,15 @@ class DBDiagramView(ctk.CTkFrame):
         
         # Info label
         info_label = ctk.CTkLabel(
-            right_panel,
-            text="💡 Drag tables to rearrange the diagram",
+            self.right_panel,
+            text="💡 Drag table headers to move • Ctrl+Drag or Middle-click to pan • Scroll to zoom",
             font=ctk.CTkFont(size=10),
             text_color="#8B7355"
         )
         info_label.pack(pady=(0, 10))
+        
+        # Connect canvas zoom update to label
+        self.canvas.zoom_callback = self.update_zoom_label
     
     def load_sample_dbml(self):
         """Load sample DBML code"""
@@ -521,3 +866,45 @@ Ref: comments.user_id > users.id
             
         except Exception as e:
             messagebox.showerror("Parse Error", f"Failed to parse DBML:\n{str(e)}")
+    
+    def update_zoom_label(self, zoom_level):
+        """Update the zoom percentage label"""
+        percentage = int(zoom_level * 100)
+        self.zoom_label.configure(text=f"{percentage}%")
+    
+    def start_resize(self, event):
+        """Start resizing the left panel"""
+        self.resizing = True
+        self.resize_start_x = event.x_root
+        self.resize_start_width = self.left_panel_width
+    
+    def do_resize(self, event):
+        """Handle panel resizing"""
+        if self.resizing:
+            # Calculate new width
+            delta = event.x_root - self.resize_start_x
+            new_width = self.resize_start_width + delta
+            
+            # Clamp to min/max values
+            new_width = max(self.min_left_width, min(self.max_left_width, new_width))
+            
+            # Update width
+            self.left_panel_width = new_width
+            
+            # Update panel positions
+            self.left_panel.place_configure(width=self.left_panel_width)
+            self.separator.place(x=self.left_panel_width)
+            self.right_panel.place(x=self.left_panel_width + 6)
+    
+    def stop_resize(self, event):
+        """Stop resizing the left panel"""
+        self.resizing = False
+    
+    def update_panels(self, event=None):
+        """Update right panel width when container resizes"""
+        if hasattr(self, 'right_panel'):
+            container_width = self.winfo_width() - 20  # Account for padding
+            right_width = container_width - self.left_panel_width - 6
+            if right_width > 0:
+                self.right_panel.place(x=self.left_panel_width + 6)
+                self.right_panel.place_configure(width=right_width)

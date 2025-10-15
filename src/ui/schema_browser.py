@@ -85,68 +85,146 @@ class SchemaBrowser(ctk.CTkFrame):
         self.query_tooltip = None
         self.hover_after_id = None
         
+        # Collapsible section states
+        self.schema_collapsed = False
+        self.queries_collapsed = False
+        
         # Create UI components
         self.create_widgets()
     
     def create_widgets(self):
         """Create schema browser widgets"""
-        # Connection buttons frame at the top
-        connection_frame = ctk.CTkFrame(self, fg_color="#E8DFD0")
-        connection_frame.pack(fill="x", padx=12, pady=(12, 8))
+        # ===== HEADER: Connection Controls =====
+        header_frame = ctk.CTkFrame(self, fg_color="#9B8F5E", corner_radius=0)
+        header_frame.pack(fill="x", padx=0, pady=0)
         
-        # Create button container for horizontal layout
-        button_container = ctk.CTkFrame(connection_frame, fg_color="transparent")
-        button_container.pack(pady=10, padx=10)
+        # Title and controls container
+        header_content = ctk.CTkFrame(header_frame, fg_color="transparent")
+        header_content.pack(fill="x", padx=12, pady=8)
+        
+        # Left side - title
+        title_label = ctk.CTkLabel(
+            header_content,
+            text="🗄️ Database",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color="#FFFFFF"
+        )
+        title_label.pack(side="left")
+        
+        # Right side - connection buttons
+        self.button_container = ctk.CTkFrame(header_content, fg_color="transparent")
+        self.button_container.pack(side="right")
         
         self.connect_btn = ctk.CTkButton(
-            button_container,
+            self.button_container,
             text="🔌 Connect",
             command=self.on_connect if self.on_connect else None,
             width=100,
-            height=32,
-            font=ctk.CTkFont(size=11, weight="bold"),
-            fg_color="#9B8F5E",
-            hover_color="#87795A"
+            height=28,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color="#87795A",
+            hover_color="#6B5E45",
+            corner_radius=6
         )
-        self.connect_btn.pack(side="left", padx=5)
+        self.connect_btn.pack(side="left", padx=2)
         
         self.disconnect_btn = ctk.CTkButton(
-            button_container,
+            self.button_container,
             text="🔌 Disconnect",
             command=self.on_disconnect if self.on_disconnect else None,
             width=100,
-            height=32,
-            font=ctk.CTkFont(size=11, weight="bold"),
-            state="disabled",
+            height=28,
+            font=ctk.CTkFont(size=12, weight="bold"),
             fg_color="#C4756C",
-            hover_color="#A85E56"
+            hover_color="#A85E56",
+            corner_radius=6
         )
-        self.disconnect_btn.pack(side="left", padx=5)
+        # Initially hide disconnect button
+        self.disconnect_btn.pack_forget()
         
-        # Connection info label
+        # Connection info label (below header)
+        connection_info_frame = ctk.CTkFrame(self, fg_color="#E8DFD0", corner_radius=8)
+        connection_info_frame.pack(fill="x", padx=0, pady=0)
+        
         self.connection_label = ctk.CTkLabel(
-            connection_frame,
+            connection_info_frame,
             text="Not connected",
-            font=ctk.CTkFont(size=10),
+            font=ctk.CTkFont(size=9),
             text_color="#8B7355",
-            wraplength=220
+            wraplength=280,
+            anchor="center"
         )
-        self.connection_label.pack(pady=(0, 10), padx=10)
+        self.connection_label.pack(pady=6, padx=10)
         
-        # Title frame
-        title_frame = ctk.CTkFrame(self, fg_color="transparent")
-        title_frame.pack(pady=(8, 8), fill="x", padx=12)
+        # ===== SAVED QUERIES SECTION (Collapsible) =====
+        # Saved queries header (separate from content)
+        self.queries_header = ctk.CTkFrame(self, fg_color="#D9CDBF", corner_radius=6)
+        self.queries_header.pack(fill="x", padx=8, pady=(8, 0))
         
-        title_label = ctk.CTkLabel(
-            title_frame, 
-            text="Schema Browser", 
-            font=ctk.CTkFont(size=15, weight="bold")
+        queries_header_container = ctk.CTkFrame(self.queries_header, fg_color="transparent")
+        queries_header_container.pack(fill="x", padx=4, pady=4)
+        
+        queries_header_btn = ctk.CTkButton(
+            queries_header_container,
+            text="▼ Saved Queries",
+            command=self.toggle_queries_section,
+            fg_color="transparent",
+            hover_color="#C9BDB0",
+            text_color="#3E2723",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            anchor="w",
+            height=32
         )
-        title_label.pack(side="left", expand=True)
+        queries_header_btn.pack(side="left", fill="x", expand=True)
+        self.queries_header_btn = queries_header_btn
         
-        # Tree frame for database schema (search removed)
-        tree_frame = ctk.CTkFrame(self, fg_color="#E8DFD0")
-        tree_frame.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+        # Add query button
+        add_query_btn = ctk.CTkButton(
+            queries_header_container,
+            text="➕",
+            width=30,
+            height=28,
+            command=self.show_add_query_dialog,
+            fg_color="#9B8F5E",
+            hover_color="#87795A",
+            font=ctk.CTkFont(size=14),
+            corner_radius=6
+        )
+        add_query_btn.pack(side="right", padx=4)
+        
+        # Saved queries content frame (this will be shown/hidden)
+        self.queries_content_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.queries_content_frame.pack(fill="x", expand=False, padx=8, pady=(0, 8))
+        
+        # Saved Queries Section
+        self.create_saved_queries_section()
+        
+        # ===== SCHEMA BROWSER SECTION (Collapsible) =====
+        # Schema browser header
+        self.schema_header = ctk.CTkFrame(self, fg_color="#D9CDBF", corner_radius=6)
+        self.schema_header.pack(fill="x", padx=8, pady=(8, 0))
+        
+        schema_header_btn = ctk.CTkButton(
+            self.schema_header,
+            text="▼ Schema Browser",
+            command=self.toggle_schema_section,
+            fg_color="transparent",
+            hover_color="#C9BDB0",
+            text_color="#3E2723",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            anchor="w",
+            height=32
+        )
+        schema_header_btn.pack(fill="x", padx=8, pady=4)
+        self.schema_header_btn = schema_header_btn
+        
+        # Schema browser content frame
+        self.schema_content_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.schema_content_frame.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+        
+        # Tree frame for database schema
+        tree_frame = ctk.CTkFrame(self.schema_content_frame, fg_color="#E8DFD0", corner_radius=8)
+        tree_frame.pack(fill="both", expand=True)
         
         # Create treeview with scrollbars
         self.tree = ttk.Treeview(tree_frame, show="tree")
@@ -165,56 +243,26 @@ class SchemaBrowser(ctk.CTkFrame):
         self.tree.bind("<Double-1>", self.on_item_double_click)
         self.tree.bind("<Button-3>", self.on_right_click)  # Right-click context menu
         
-        # Separator
-        separator = ctk.CTkFrame(self, height=2, fg_color="#9B8F5E")
-        separator.pack(fill="x", padx=12, pady=8)
-        
-        # Saved Queries Section
-        self.create_saved_queries_section()
-        
         # Info panel
-        info_frame = ctk.CTkFrame(self, fg_color="#E8DFD0")
-        info_frame.pack(fill="x", padx=12, pady=(0, 12))
+        info_frame = ctk.CTkFrame(self.schema_content_frame, fg_color="#E8DFD0", corner_radius=8)
+        info_frame.pack(fill="x", pady=(8, 0))
         
         self.info_label = ctk.CTkLabel(
             info_frame, 
             text="No database connected",
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(size=11),
             wraplength=280,
             text_color="#3E2723"
         )
-        self.info_label.pack(pady=12)
+        self.info_label.pack(pady=8)
         
         # Configure tree styling
         self.configure_tree_style()
     
     def create_saved_queries_section(self):
         """Create the saved queries section below the schema browser"""
-        # Saved queries title frame
-        saved_queries_header = ctk.CTkFrame(self, fg_color="transparent")
-        saved_queries_header.pack(fill="x", padx=12, pady=(0, 8))
-        
-        saved_queries_label = ctk.CTkLabel(
-            saved_queries_header,
-            text="⭐ Saved Queries",
-            font=ctk.CTkFont(size=14, weight="bold"),
-            anchor="w"
-        )
-        saved_queries_label.pack(side="left", expand=True)
-        
-        # Add query button
-        add_query_btn = ctk.CTkButton(
-            saved_queries_header,
-            text="➕",
-            width=30,
-            height=30,
-            command=self.show_add_query_dialog,
-            font=ctk.CTkFont(size=16)
-        )
-        add_query_btn.pack(side="right")
-        
-        # Saved queries table frame
-        queries_table_frame = ctk.CTkFrame(self, fg_color="#E8DFD0")
+        # Saved queries table frame (removed duplicate header and button)
+        queries_table_frame = ctk.CTkFrame(self.queries_content_frame, fg_color="#E8DFD0", corner_radius=8)
         queries_table_frame.pack(fill="both", expand=False, padx=12, pady=(0, 12))
         queries_table_frame.configure(height=200)  # Fixed height for saved queries section
         
@@ -290,6 +338,32 @@ class SchemaBrowser(ctk.CTkFrame):
                         troughcolor="#F5EFE7", 
                         borderwidth=1,
                         arrowcolor="#3E2723")
+    
+    def toggle_schema_section(self):
+        """Toggle the schema browser section visibility"""
+        if self.schema_collapsed:
+            # Expand - pack after the schema header
+            self.schema_content_frame.pack(fill="both", expand=True, padx=8, pady=(0, 8), after=self.schema_header)
+            self.schema_header_btn.configure(text="▼ Schema Browser")
+            self.schema_collapsed = False
+        else:
+            # Collapse
+            self.schema_content_frame.pack_forget()
+            self.schema_header_btn.configure(text="▶ Schema Browser")
+            self.schema_collapsed = True
+    
+    def toggle_queries_section(self):
+        """Toggle the saved queries section visibility"""
+        if self.queries_collapsed:
+            # Expand - pack after the queries header
+            self.queries_content_frame.pack(fill="x", expand=False, padx=8, pady=(0, 8), after=self.queries_header)
+            self.queries_header_btn.configure(text="▼ Saved Queries")
+            self.queries_collapsed = False
+        else:
+            # Collapse
+            self.queries_content_frame.pack_forget()
+            self.queries_header_btn.configure(text="▶ Saved Queries")
+            self.queries_collapsed = True
     
     def update_schema(self, schema_data: Dict[str, Any]):
         """Update the schema browser with new data"""
@@ -613,13 +687,15 @@ class SchemaBrowser(ctk.CTkFrame):
     def set_connected(self, connected: bool, db_info: str = None):
         """Update connection button states and connection info"""
         if connected:
-            self.connect_btn.configure(state="disabled")
-            self.disconnect_btn.configure(state="normal")
+            # Hide connect button, show disconnect button
+            self.connect_btn.pack_forget()
+            self.disconnect_btn.pack(side="left", padx=2)
             if db_info:
                 self.connection_label.configure(text=db_info, text_color="#3E2723")
         else:
-            self.connect_btn.configure(state="normal")
-            self.disconnect_btn.configure(state="disabled")
+            # Hide disconnect button, show connect button
+            self.disconnect_btn.pack_forget()
+            self.connect_btn.pack(side="left", padx=2)
             self.connection_label.configure(text="Not connected", text_color="#8B7355")
     
     def on_item_double_click(self, event):
@@ -813,7 +889,8 @@ ORDER BY ordinal_position;
             title_frame,
             placeholder_text="Enter query title (leave blank for AI-generated title)",
             height=35,
-            font=ctk.CTkFont(size=12)
+            font=ctk.CTkFont(size=12),
+            corner_radius=6
         )
         title_entry.pack(fill="x", pady=5)
         
@@ -889,7 +966,8 @@ ORDER BY ordinal_position;
             height=36,
             fg_color="#E8DFD0",
             hover_color="#D9CDBF",
-            text_color="#3E2723"
+            text_color="#3E2723",
+            corner_radius=6
         )
         cancel_btn.pack(side="left", padx=5, pady=10)
         
@@ -899,7 +977,8 @@ ORDER BY ordinal_position;
             text="Save Query",
             command=save_query,
             width=120,
-            height=36
+            height=36,
+            corner_radius=6
         )
         save_btn.pack(side="right", padx=5, pady=10)
     
