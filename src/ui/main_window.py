@@ -12,6 +12,7 @@ from pathlib import Path
 import pandas as pd
 from datetime import datetime
 from PIL import Image, ImageTk
+import threading
 
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
@@ -826,35 +827,62 @@ class NeuronDBApp(ctk.CTk):
     
     def connect_to_database(self, connection_config: Dict[str, Any]):
         """Connect to database with given configuration"""
+        def _connect_thread():
+            """Thread function for database connection"""
+            try:
+                self.logger.info(f"[UI] Starting database connection process...")
+                self.logger.info(f"[UI] Config: {connection_config['database']}@{connection_config['host']}:{connection_config['port']}")
+                
+                # Attempt connection
+                self.logger.info("[UI] Calling db_connection.connect()...")
+                self.db_connection.connect(
+                    host=connection_config['host'],
+                    port=connection_config['port'],
+                    database=connection_config['database'],
+                    username=connection_config['username'],
+                    password=connection_config['password']
+                )
+                self.logger.info("[UI] Connection successful, updating UI...")
+                
+                # Update UI in main thread
+                self.after(0, self._on_connection_success, connection_config)
+                
+            except Exception as e:
+                self.logger.error(f"[UI] ❌ Connection failed: {type(e).__name__}: {e}")
+                # Update UI in main thread
+                self.after(0, self._on_connection_error, str(e))
+        
+        # Update status and start connection in background thread
+        self.update_status("Connecting to database...")
+        thread = threading.Thread(target=_connect_thread, daemon=True)
+        thread.start()
+    
+    def _on_connection_success(self, connection_config: Dict[str, Any]):
+        """Called in main thread after successful connection"""
         try:
-            self.update_status("Connecting to database...")
-            
-            # Attempt connection
-            self.db_connection.connect(
-                host=connection_config['host'],
-                port=connection_config['port'],
-                database=connection_config['database'],
-                username=connection_config['username'],
-                password=connection_config['password']
-            )
-            
             # Update UI - update schema browser connection state with DB info
             db_info = f"{connection_config['database']}@{connection_config['host']}:{connection_config['port']}"
             self.schema_browser.set_connected(True, db_info)
             
-            # Load schema
+            # Load schema in background
+            self.logger.info("[UI] Refreshing schema...")
             self.refresh_schema()
             
             # Update PSQL terminal
+            self.logger.info("[UI] Updating PSQL terminal...")
             self.psql_terminal.set_connection(self.db_connection)
             
             self.update_status("Connected successfully")
-            self.logger.info(f"Connected to database: {connection_config['database']}")
+            self.logger.info(f"[UI] ✅ Connected to database: {connection_config['database']}")
             
         except Exception as e:
-            self.logger.error(f"Connection failed: {e}")
-            messagebox.showerror("Connection Error", f"Failed to connect to database:\n{e}")
-            self.update_status("Connection failed")
+            self.logger.error(f"[UI] Error in post-connection setup: {e}")
+            self.update_status("Connection succeeded but setup failed")
+    
+    def _on_connection_error(self, error_message: str):
+        """Called in main thread after connection failure"""
+        messagebox.showerror("Connection Error", f"Failed to connect to database:\n{error_message}")
+        self.update_status("Connection failed")
     
     def disconnect_database(self):
         """Disconnect from current database"""
@@ -888,27 +916,57 @@ class NeuronDBApp(ctk.CTk):
             messagebox.showwarning("Not Connected", "Please connect to a database first")
             return
         
+        def _refresh_schema_thread():
+            """Thread function for schema refresh"""
+            try:
+                self.logger.info("[UI] Starting schema refresh...")
+                
+                # Get schema from database (this can be slow)
+                self.logger.info("[UI] Calling get_database_schema()...")
+                schema = self.db_connection.get_database_schema()
+                
+                self.logger.info(f"[UI] Schema loaded: {len(schema.get('tables', {}))} tables")
+                
+                # Update UI in main thread
+                self.after(0, self._on_schema_loaded, schema)
+                
+            except Exception as e:
+                self.logger.error(f"[UI] Schema refresh failed: {type(e).__name__}: {e}")
+                # Update UI in main thread
+                self.after(0, self._on_schema_error, str(e))
+        
+        # Update status and start schema fetch in background thread
+        self.update_status("Loading database schema...")
+        thread = threading.Thread(target=_refresh_schema_thread, daemon=True)
+        thread.start()
+    
+    def _on_schema_loaded(self, schema: Dict[str, Any]):
+        """Called in main thread after schema is loaded"""
         try:
-            self.update_status("Loading database schema...")
-            
-            # Get schema from database
-            self.current_schema = self.db_connection.get_database_schema()
+            self.current_schema = schema
             
             # Update schema browser
+            self.logger.info("[UI] Updating schema browser...")
             self.schema_browser.update_schema(self.current_schema)
             
             # Update AI assistant with schema context
+            self.logger.info("[UI] Updating AI assistant schema...")
             if self.ai_assistant:
                 self.ai_assistant.set_database_schema(self.current_schema)
             
             table_count = len(self.current_schema.get('tables', {}))
             view_count = len(self.current_schema.get('views', {}))
             self.update_status(f"Schema loaded: {table_count} tables, {view_count} views")
+            self.logger.info(f"[UI] ✅ Schema refresh complete")
             
         except Exception as e:
-            self.logger.error(f"Schema refresh failed: {e}")
-            messagebox.showerror("Schema Error", f"Failed to load database schema:\n{e}")
-            self.update_status("Schema load failed")
+            self.logger.error(f"[UI] Error updating UI with schema: {e}")
+            self.update_status("Schema loaded but UI update failed")
+    
+    def _on_schema_error(self, error_message: str):
+        """Called in main thread after schema loading failure"""
+        messagebox.showerror("Schema Error", f"Failed to load database schema:\n{error_message}")
+        self.update_status("Schema load failed")
     
     def execute_current_query(self):
         """Execute the current query from query panel"""

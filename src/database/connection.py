@@ -23,9 +23,26 @@ class DatabaseConnection:
     def connect(self, host: str, port: int, database: str, username: str, password: str) -> bool:
         """Establish connection to PostgreSQL database"""
         try:
+            logger.info(f"[CONNECTION] Starting connection attempt...")
+            logger.info(f"[CONNECTION] Host: {host}")
+            logger.info(f"[CONNECTION] Port: {port}")
+            logger.info(f"[CONNECTION] Database: {database}")
+            logger.info(f"[CONNECTION] Username: {username}")
+            
             connection_string = f"host='{host}' port='{port}' dbname='{database}' user='{username}' password='{password}'"
-            self.connection = psycopg2.connect(connection_string)
+            logger.info(f"[CONNECTION] Connecting to PostgreSQL...")
+            
+            self.connection = psycopg2.connect(connection_string, connect_timeout=10)
+            logger.info(f"[CONNECTION] Connection established successfully")
+            
+            # Set lock timeout to avoid hanging on locked tables
+            with self.connection.cursor() as cur:
+                cur.execute("SET application_name = 'NeuronDB';")
+                cur.execute("SET lock_timeout = '5s';")  # Fail fast if table is locked
+                cur.execute("SET statement_timeout = '60s';")  # Overall query timeout
+            
             self.cursor = self.connection.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            logger.info(f"[CONNECTION] Cursor created")
             
             self.connection_info = {
                 'host': host,
@@ -35,11 +52,11 @@ class DatabaseConnection:
                 'password': password  # Store password in memory for psql terminal
             }
             
-            logger.info(f"Connected to database: {database}@{host}:{port}")
+            logger.info(f"[CONNECTION] ✅ Connected to database: {database}@{host}:{port}")
             return True
             
         except Exception as e:
-            logger.error(f"Connection failed: {e}")
+            logger.error(f"[CONNECTION] ❌ Connection failed: {type(e).__name__}: {e}")
             raise e
     
     def disconnect(self):
@@ -94,6 +111,8 @@ class DatabaseConnection:
         if not self.is_connected():
             raise Exception("Not connected to database")
         
+        logger.info("[SCHEMA] Starting schema retrieval...")
+        
         schema_info = {
             'tables': {},
             'views': {},
@@ -102,35 +121,50 @@ class DatabaseConnection:
         }
         
         try:
-            # Get all schemas
+            # Get all schemas (excluding system and TimescaleDB internal schemas)
+            logger.info("[SCHEMA] Fetching schemas...")
             self.cursor.execute("""
-                SELECT schema_name 
-                FROM information_schema.schemata 
-                WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
-                ORDER BY schema_name
+                SELECT nspname as schema_name
+                FROM pg_catalog.pg_namespace
+                WHERE nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+                AND nspname NOT LIKE 'pg_%'
+                AND nspname NOT LIKE '_timescaledb%'
+                AND nspname NOT LIKE 'timescaledb_%'
+                ORDER BY nspname
             """)
             schema_info['schemas'] = [row['schema_name'] for row in self.cursor.fetchall()]
+            logger.info(f"[SCHEMA] Found {len(schema_info['schemas'])} user schemas: {schema_info['schemas']}")
             
-            # Get all tables with their columns
+            # Get all tables with their columns (excluding system and TimescaleDB schemas)
+            # Using pg_catalog for better performance with TimescaleDB
+            logger.info("[SCHEMA] Fetching tables and columns...")
             self.cursor.execute("""
                 SELECT 
-                    t.table_schema,
-                    t.table_name,
-                    c.column_name,
-                    c.data_type,
-                    c.is_nullable,
-                    c.column_default,
-                    c.character_maximum_length,
-                    c.ordinal_position
-                FROM information_schema.tables t
-                JOIN information_schema.columns c ON t.table_name = c.table_name 
-                    AND t.table_schema = c.table_schema
-                WHERE t.table_type = 'BASE TABLE' 
-                    AND t.table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
-                ORDER BY t.table_schema, t.table_name, c.ordinal_position
+                    n.nspname as table_schema,
+                    c.relname as table_name,
+                    a.attname as column_name,
+                    format_type(a.atttypid, a.atttypmod) as data_type,
+                    NOT a.attnotnull as is_nullable,
+                    pg_get_expr(d.adbin, d.adrelid) as column_default,
+                    a.attnum as ordinal_position
+                FROM pg_catalog.pg_class c
+                JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid
+                LEFT JOIN pg_catalog.pg_attrdef d ON d.adrelid = c.oid AND d.adnum = a.attnum
+                WHERE c.relkind = 'r'
+                    AND a.attnum > 0
+                    AND NOT a.attisdropped
+                    AND n.nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+                    AND n.nspname NOT LIKE 'pg_%'
+                    AND n.nspname NOT LIKE '_timescaledb%'
+                    AND n.nspname NOT LIKE 'timescaledb_%'
+                ORDER BY n.nspname, c.relname, a.attnum
             """)
             
+            logger.info("[SCHEMA] Query executed, fetching results...")
             tables_data = self.cursor.fetchall()
+            logger.info(f"[SCHEMA] Retrieved {len(tables_data)} column definitions")
+            
             for row in tables_data:
                 schema_name = row['table_schema']
                 table_name = row['table_name']
@@ -146,55 +180,71 @@ class DatabaseConnection:
                 column_info = {
                     'name': row['column_name'],
                     'type': row['data_type'],
-                    'nullable': row['is_nullable'] == 'YES',
+                    'nullable': row['is_nullable'],
                     'default': row['column_default'],
-                    'max_length': row['character_maximum_length'],
+                    'max_length': None,  # Not available in pg_catalog query
                     'position': row['ordinal_position']
                 }
                 schema_info['tables'][full_table_name]['columns'].append(column_info)
             
-            # Get primary keys
+            logger.info(f"[SCHEMA] Processed {len(schema_info['tables'])} tables")
+            
+            # Get primary keys (using pg_catalog for better performance)
+            logger.info("[SCHEMA] Fetching primary keys...")
             self.cursor.execute("""
                 SELECT 
-                    tc.table_schema,
-                    tc.table_name,
-                    kcu.column_name
-                FROM information_schema.table_constraints tc
-                JOIN information_schema.key_column_usage kcu 
-                    ON tc.constraint_name = kcu.constraint_name
-                    AND tc.table_schema = kcu.table_schema
-                WHERE tc.constraint_type = 'PRIMARY KEY'
-                    AND tc.table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+                    n.nspname as table_schema,
+                    c.relname as table_name,
+                    a.attname as column_name
+                FROM pg_catalog.pg_constraint con
+                JOIN pg_catalog.pg_class c ON con.conrelid = c.oid
+                JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(con.conkey)
+                WHERE con.contype = 'p'
+                    AND n.nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+                    AND n.nspname NOT LIKE 'pg_%'
+                    AND n.nspname NOT LIKE '_timescaledb%'
+                    AND n.nspname NOT LIKE 'timescaledb_%'
             """)
             
-            for row in self.cursor.fetchall():
+            pk_rows = self.cursor.fetchall()
+            logger.info(f"[SCHEMA] Found {len(pk_rows)} primary key constraints")
+            
+            for row in pk_rows:
                 full_table_name = f"{row['table_schema']}.{row['table_name']}"
                 if full_table_name in schema_info['tables']:
                     for col in schema_info['tables'][full_table_name]['columns']:
                         if col['name'] == row['column_name']:
                             col['primary_key'] = True
             
-            # Get foreign keys
+            # Get foreign keys (using pg_catalog for better performance)
+            logger.info("[SCHEMA] Fetching foreign keys...")
             self.cursor.execute("""
                 SELECT 
-                    tc.table_schema,
-                    tc.table_name,
-                    kcu.column_name,
-                    ccu.table_schema AS foreign_table_schema,
-                    ccu.table_name AS foreign_table_name,
-                    ccu.column_name AS foreign_column_name
-                FROM information_schema.table_constraints tc
-                JOIN information_schema.key_column_usage kcu 
-                    ON tc.constraint_name = kcu.constraint_name
-                    AND tc.table_schema = kcu.table_schema
-                JOIN information_schema.constraint_column_usage ccu 
-                    ON ccu.constraint_name = tc.constraint_name
-                    AND ccu.table_schema = tc.table_schema
-                WHERE tc.constraint_type = 'FOREIGN KEY'
-                    AND tc.table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+                    n1.nspname as table_schema,
+                    c1.relname as table_name,
+                    a1.attname as column_name,
+                    n2.nspname as foreign_table_schema,
+                    c2.relname as foreign_table_name,
+                    a2.attname as foreign_column_name
+                FROM pg_catalog.pg_constraint con
+                JOIN pg_catalog.pg_class c1 ON con.conrelid = c1.oid
+                JOIN pg_catalog.pg_namespace n1 ON n1.oid = c1.relnamespace
+                JOIN pg_catalog.pg_class c2 ON con.confrelid = c2.oid
+                JOIN pg_catalog.pg_namespace n2 ON n2.oid = c2.relnamespace
+                JOIN pg_catalog.pg_attribute a1 ON a1.attrelid = c1.oid AND a1.attnum = ANY(con.conkey)
+                JOIN pg_catalog.pg_attribute a2 ON a2.attrelid = c2.oid AND a2.attnum = ANY(con.confkey)
+                WHERE con.contype = 'f'
+                    AND n1.nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+                    AND n1.nspname NOT LIKE 'pg_%'
+                    AND n1.nspname NOT LIKE '_timescaledb%'
+                    AND n1.nspname NOT LIKE 'timescaledb_%'
             """)
             
-            for row in self.cursor.fetchall():
+            fk_rows = self.cursor.fetchall()
+            logger.info(f"[SCHEMA] Found {len(fk_rows)} foreign key constraints")
+            
+            for row in fk_rows:
                 full_table_name = f"{row['table_schema']}.{row['table_name']}"
                 if full_table_name in schema_info['tables']:
                     for col in schema_info['tables'][full_table_name]['columns']:
@@ -204,18 +254,27 @@ class DatabaseConnection:
                                 'column': row['foreign_column_name']
                             }
             
-            # Get views
+            # Get views (using pg_catalog for better performance)
+            logger.info("[SCHEMA] Fetching views...")
             self.cursor.execute("""
                 SELECT 
-                    table_schema,
-                    table_name,
-                    view_definition
-                FROM information_schema.views
-                WHERE table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
-                ORDER BY table_schema, table_name
+                    n.nspname as table_schema,
+                    c.relname as table_name,
+                    pg_get_viewdef(c.oid, true) as view_definition
+                FROM pg_catalog.pg_class c
+                JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                WHERE c.relkind = 'v'
+                    AND n.nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+                    AND n.nspname NOT LIKE 'pg_%'
+                    AND n.nspname NOT LIKE '_timescaledb%'
+                    AND n.nspname NOT LIKE 'timescaledb_%'
+                ORDER BY n.nspname, c.relname
             """)
             
-            for row in self.cursor.fetchall():
+            view_rows = self.cursor.fetchall()
+            logger.info(f"[SCHEMA] Found {len(view_rows)} views")
+            
+            for row in view_rows:
                 full_view_name = f"{row['table_schema']}.{row['table_name']}"
                 schema_info['views'][full_view_name] = {
                     'schema': row['table_schema'],
@@ -223,12 +282,27 @@ class DatabaseConnection:
                     'definition': row['view_definition']
                 }
             
-            logger.info(f"Retrieved schema for {len(schema_info['tables'])} tables and {len(schema_info['views'])} views")
+            logger.info(f"[SCHEMA] ✅ Schema retrieval complete: {len(schema_info['tables'])} tables, {len(schema_info['views'])} views")
             return schema_info
             
         except Exception as e:
-            logger.error(f"Failed to retrieve database schema: {e}")
-            raise e
+            # Handle lock timeout or statement timeout gracefully
+            error_msg = str(e)
+            error_type = type(e).__name__
+            
+            if "lock timeout" in error_msg.lower() or error_type == "LockNotAvailable":
+                logger.warning(f"[SCHEMA] ⚠️  Lock timeout while fetching schema")
+                logger.warning(f"[SCHEMA] Database has locked tables (active queries/transactions)")
+                logger.warning(f"[SCHEMA] Returning partial schema: {len(schema_info['tables'])} tables loaded so far")
+                # Return what we have so far instead of failing
+                return schema_info
+            elif "statement timeout" in error_msg.lower():
+                logger.warning(f"[SCHEMA] ⚠️  Statement timeout - query took too long")
+                logger.warning(f"[SCHEMA] Returning partial schema: {len(schema_info['tables'])} tables loaded")
+                return schema_info
+            else:
+                logger.error(f"[SCHEMA] ❌ Failed to retrieve database schema: {error_type}: {e}")
+                raise e
 
 class ConnectionManager:
     """Manages saved database connections"""
