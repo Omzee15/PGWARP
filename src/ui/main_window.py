@@ -887,7 +887,11 @@ class NeuronDBApp(ctk.CTk):
     def disconnect_database(self):
         """Disconnect from current database"""
         try:
-            self.db_connection.disconnect()
+            self.logger.info("[UI] Disconnecting from database...")
+            
+            if self.db_connection and self.db_connection.is_connected():
+                self.db_connection.disconnect()
+                self.logger.info("[UI] Database connection closed")
             
             # Update UI - update schema browser connection state
             self.schema_browser.set_connected(False)
@@ -904,10 +908,10 @@ class NeuronDBApp(ctk.CTk):
             self.psql_terminal.clear_connection()
             
             self.update_status("Disconnected")
-            self.logger.info("Disconnected from database")
+            self.logger.info("[UI] ✅ Disconnected from database successfully")
             
         except Exception as e:
-            self.logger.error(f"Disconnect failed: {e}")
+            self.logger.error(f"[UI] ❌ Disconnect failed: {type(e).__name__}: {e}")
             messagebox.showerror("Disconnect Error", f"Failed to disconnect:\n{e}")
     
     def refresh_schema(self):
@@ -1073,16 +1077,30 @@ Built with Python, CustomTkinter, and LangChain.
     def on_closing(self):
         """Handle application closing"""
         try:
-            # Disconnect from database
-            if self.db_connection.is_connected():
-                self.db_connection.disconnect()
+            self.logger.info("Application closing initiated...")
             
-            self.logger.info("PgWarp application closing")
+            # Disconnect from database if connected
+            if self.db_connection and self.db_connection.is_connected():
+                self.logger.info("Closing database connection...")
+                self.update_status("Disconnecting from database...")
+                self.db_connection.disconnect()
+                self.logger.info("✅ Database connection closed successfully")
+            
+            # Clean up AI assistant if exists
+            if self.ai_assistant:
+                self.logger.info("Cleaning up AI assistant...")
+                self.ai_assistant = None
+            
+            self.logger.info("NeuronDB application closed")
             self.destroy()
             
         except Exception as e:
-            self.logger.error(f"Error during shutdown: {e}")
-            self.destroy()
+            self.logger.error(f"❌ Error during shutdown: {type(e).__name__}: {e}")
+            # Force close even if there's an error
+            try:
+                self.destroy()
+            except:
+                pass
 
 if __name__ == "__main__":
     app = NeuronDBApp()

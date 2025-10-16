@@ -61,14 +61,38 @@ class DatabaseConnection:
     
     def disconnect(self):
         """Close database connection"""
-        if self.cursor:
-            self.cursor.close()
-        if self.connection:
-            self.connection.close()
-        self.connection = None
-        self.cursor = None
-        self.connection_info = {}
-        logger.info("Database connection closed")
+        try:
+            logger.info("[CONNECTION] Closing database connection...")
+            
+            # Close cursor
+            if self.cursor:
+                try:
+                    self.cursor.close()
+                    logger.info("[CONNECTION] Cursor closed")
+                except Exception as e:
+                    logger.warning(f"[CONNECTION] Error closing cursor: {e}")
+            
+            # Close connection
+            if self.connection:
+                try:
+                    self.connection.close()
+                    logger.info("[CONNECTION] Connection closed")
+                except Exception as e:
+                    logger.warning(f"[CONNECTION] Error closing connection: {e}")
+            
+            # Clear connection info
+            self.connection = None
+            self.cursor = None
+            self.connection_info = {}
+            
+            logger.info("[CONNECTION] ✅ Database connection closed successfully")
+            
+        except Exception as e:
+            logger.error(f"[CONNECTION] ❌ Error during disconnect: {type(e).__name__}: {e}")
+            # Force clear even if there's an error
+            self.connection = None
+            self.cursor = None
+            self.connection_info = {}
     
     def is_connected(self) -> bool:
         """Check if database connection is active"""
