@@ -59,7 +59,7 @@ class NeuronDBApp(ctk.CTk):
         self.current_schema = {}
         
         # Configure main window
-        self.title("NeuronDB - AI-Powered PostgreSQL Client")
+        self.title("NeuronDB")
         self.geometry("1600x1100")
         self.minsize(1400, 950)
         
