@@ -1,0 +1,28 @@
+{
+	"publisher": "akil-s",
+	"repository": "https://github.com/Salah-Akil/tokyo-vscode-light.git",
+	"name": "tokyo-light",
+	"displayName": "Tokyo (Light)",
+	"description": "Tokyo light theme for VSCode",
+	"version": "0.0.4",
+	"engines": {
+		"vscode": "^1.43.0"
+	},
+	"categories": [
+		"Themes"
+	],
+	"contributes": {
+		"themes": [
+			{
+				"label": "Tokyo (Light)",
+				"uiTheme": "vs",
+				"path": "./themes/tokyo-light-color-theme.json"
+			}
+		]
+	},
+	"__metadata": {
+		"installedTimestamp": 1760604682511,
+		"targetPlatform": "undefined",
+		"size": 456881
+	}
+}
