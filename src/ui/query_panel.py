@@ -133,10 +133,10 @@ class QueryPanel(ctk.CTkFrame):
             placeholder_text="Ask AI to generate a query...",
             height=36,
             font=ctk.CTkFont(size=12),
-            fg_color=theme_manager.get_color("inputs.bg"),
+            fg_color=theme_manager.get_color("editor.background"),
             text_color=theme_manager.get_color("text.primary"),
             placeholder_text_color=theme_manager.get_color("text.secondary"),
-            border_color=theme_manager.get_color("accent.primary"),
+            border_color=theme_manager.get_color("accent.main"),
             corner_radius=6
         )
         self.ai_entry.grid(row=0, column=0, sticky="ew", padx=8, pady=8)
@@ -199,8 +199,8 @@ class QueryPanel(ctk.CTkFrame):
             font=("Consolas", 13),
             bg=theme_manager.get_color("background.main"),
             fg=theme_manager.get_color("text.primary"),
-            insertbackground=theme_manager.get_color("accent.primary"),
-            selectbackground=theme_manager.get_color("accent.primary"),
+            insertbackground=theme_manager.get_color("accent.main"),
+            selectbackground=theme_manager.get_color("accent.main"),
             selectforeground=theme_manager.get_color("buttons.primary_text"),
             wrap=tk.NONE,
             undo=True,
@@ -208,7 +208,7 @@ class QueryPanel(ctk.CTkFrame):
             relief=tk.SOLID,
             borderwidth=1,
             highlightthickness=1,
-            highlightcolor=theme_manager.get_color("accent.primary"),
+            highlightcolor=theme_manager.get_color("accent.main"),
             highlightbackground=theme_manager.get_color("background.secondary"),
             padx=12,
             pady=8
@@ -280,12 +280,12 @@ class QueryPanel(ctk.CTkFrame):
         self.query_text.bind("<Tab>", self.on_tab_key)
         
         # Configure tag for inline suggestions using theme colors
-        self.query_text.tag_configure("suggestion", foreground=get_color("text.secondary"), font=("Consolas", 13, "italic"))
+        self.query_text.tag_configure("suggestion", foreground=theme_manager.get_color("text.secondary"), font=("Consolas", 13, "italic"))
         
         # Configure tags for reference highlighting using theme colors
-        self.query_text.tag_configure("reference", foreground=get_color("editor.reference_text"))
-        self.query_text.tag_configure("reference_valid", foreground=get_color("editor.reference_text"))
-        self.query_text.tag_configure("reference_invalid", foreground=get_color("editor.reference_invalid"))
+        self.query_text.tag_configure("reference", foreground=theme_manager.get_color("text.secondary"))
+        self.query_text.tag_configure("reference_valid", foreground=theme_manager.get_color("text.secondary"))
+        self.query_text.tag_configure("reference_invalid", foreground=theme_manager.get_color("buttons.danger_bg"))
         
         # Tooltip for reference hover
         self.reference_tooltip = None
@@ -932,12 +932,12 @@ SELECT version();"""
         self.autocomplete_popup.wm_attributes("-topmost", True)  # Keep on top
         
         # Force background color on the toplevel itself using theme
-        self.autocomplete_popup.configure(bg=get_color("background.main"))
+        self.autocomplete_popup.configure(bg=theme_manager.get_color("background.main"))
         
         # Create main container frame with explicit styling using theme
         main_frame = tk.Frame(
             self.autocomplete_popup, 
-            bg=get_color("background.main"), 
+            bg=theme_manager.get_color("background.main"), 
             bd=0,
             relief=tk.FLAT
         )
@@ -946,7 +946,7 @@ SELECT version();"""
         # Create border frame for better visual appearance using theme
         border_frame = tk.Frame(
             main_frame,
-            bg=get_color("accent.main"),
+            bg=theme_manager.get_color("accent.main"),
             bd=1,
             relief=tk.SOLID
         )
@@ -955,7 +955,7 @@ SELECT version();"""
         # Create content frame using theme
         content_frame = tk.Frame(
             border_frame, 
-            bg=get_color("background.main"), 
+            bg=theme_manager.get_color("background.main"), 
             bd=0
         )
         content_frame.pack(fill=tk.BOTH, expand=True)
@@ -964,9 +964,9 @@ SELECT version();"""
         scrollbar = tk.Scrollbar(
             content_frame, 
             orient=tk.VERTICAL,
-            bg=get_color("scrollbar.thumb"),
-            troughcolor=get_color("scrollbar.track"),
-            activebackground=get_color("accent.main"),
+            bg=theme_manager.get_color("background.secondary"),
+            troughcolor=theme_manager.get_color("background.main"),
+            activebackground=theme_manager.get_color("accent.main"),
             borderwidth=0
         )
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -975,10 +975,10 @@ SELECT version();"""
         self.autocomplete_listbox = tk.Listbox(
             content_frame,
             font=("Consolas", 11),
-            bg=get_color("background.main"),
-            fg=get_color("text.primary"),
-            selectbackground=get_color("buttons.primary_bg"),
-            selectforeground=get_color("buttons.primary_text"),
+            bg=theme_manager.get_color("background.main"),
+            fg=theme_manager.get_color("text.primary"),
+            selectbackground=theme_manager.get_color("buttons.primary_bg"),
+            selectforeground=theme_manager.get_color("buttons.primary_text"),
             highlightthickness=0,
             borderwidth=0,
             relief=tk.FLAT,
@@ -1699,7 +1699,7 @@ SELECT version();"""
             title_label.pack(anchor="w")
             
             # Separator
-            separator = tk.Frame(tooltip_frame, height=1, background=theme_manager.get_color("accent.primary"))
+            separator = tk.Frame(tooltip_frame, height=1, background=theme_manager.get_color("accent.main"))
             separator.pack(fill="x", padx=8, pady=(0, 4))
             
             # Content text widget (using query writing section color)
@@ -1743,95 +1743,95 @@ SELECT version();"""
     def apply_theme(self):
         """Apply current theme to query panel components"""
         # Update main frame
-        self.configure(fg_color=get_color("background.main"))
+        self.configure(fg_color=theme_manager.get_color("background.main"))
         
         # Update toolbar components
         if hasattr(self, 'execute_all_btn'):
             self.execute_all_btn.configure(
-                fg_color=get_color("buttons.primary_bg"),
-                hover_color=get_color("buttons.primary_hover"),
-                text_color=get_color("buttons.primary_text")
+                fg_color=theme_manager.get_color("buttons.primary_bg"),
+                hover_color=theme_manager.get_color("buttons.primary_hover"),
+                text_color=theme_manager.get_color("buttons.primary_text")
             )
         
         if hasattr(self, 'execute_selected_btn'):
             self.execute_selected_btn.configure(
-                fg_color=get_color("buttons.primary_bg"),
-                hover_color=get_color("buttons.primary_hover"),
-                text_color=get_color("buttons.primary_text")
+                fg_color=theme_manager.get_color("buttons.primary_bg"),
+                hover_color=theme_manager.get_color("buttons.primary_hover"),
+                text_color=theme_manager.get_color("buttons.primary_text")
             )
         
         if hasattr(self, 'clear_btn'):
             self.clear_btn.configure(
-                fg_color=get_color("buttons.secondary_bg"),
-                hover_color=get_color("buttons.secondary_hover"),
-                text_color=get_color("buttons.secondary_text")
+                fg_color=theme_manager.get_color("buttons.secondary_bg"),
+                hover_color=theme_manager.get_color("buttons.secondary_hover"),
+                text_color=theme_manager.get_color("buttons.secondary_text")
             )
         
         if hasattr(self, 'ai_btn'):
             self.ai_btn.configure(
-                fg_color=get_color("buttons.primary_bg"),
-                hover_color=get_color("buttons.primary_hover"),
-                text_color=get_color("buttons.primary_text")
+                fg_color=theme_manager.get_color("buttons.primary_bg"),
+                hover_color=theme_manager.get_color("buttons.primary_hover"),
+                text_color=theme_manager.get_color("buttons.primary_text")
             )
         
         if hasattr(self, 'format_btn'):
             self.format_btn.configure(
-                fg_color=get_color("buttons.secondary_bg"),
-                hover_color=get_color("buttons.secondary_hover"),
-                text_color=get_color("buttons.secondary_text")
+                fg_color=theme_manager.get_color("buttons.secondary_bg"),
+                hover_color=theme_manager.get_color("buttons.secondary_hover"),
+                text_color=theme_manager.get_color("buttons.secondary_text")
             )
         
         if hasattr(self, 'ai_entry'):
             self.ai_entry.configure(
-                fg_color=get_color("editor.background"),
-                text_color=get_color("text.primary"),
-                placeholder_text_color=get_color("text.secondary"),
-                border_color=get_color("accent.main")
+                fg_color=theme_manager.get_color("editor.background"),
+                text_color=theme_manager.get_color("text.primary"),
+                placeholder_text_color=theme_manager.get_color("text.secondary"),
+                border_color=theme_manager.get_color("accent.main")
             )
         
         # Update text widgets
         if hasattr(self, 'query_text'):
             self.query_text.configure(
-                bg=get_color("editor.background"),
-                fg=get_color("editor.text"),
-                insertbackground=get_color("editor.cursor"),
-                selectbackground=get_color("editor.selection_bg"),
-                selectforeground=get_color("editor.selection_text")
+                bg=theme_manager.get_color("background.main"),
+                fg=theme_manager.get_color("text.primary"),
+                insertbackground=theme_manager.get_color("accent.main"),
+                selectbackground=theme_manager.get_color("accent.main"),
+                selectforeground=theme_manager.get_color("buttons.primary_text")
             )
             
             # Update text tags
-            self.query_text.tag_configure("suggestion", foreground=get_color("text.secondary"))
-            self.query_text.tag_configure("reference", foreground=get_color("editor.reference_text"))
-            self.query_text.tag_configure("reference_valid", foreground=get_color("editor.reference_text"))
-            self.query_text.tag_configure("reference_invalid", foreground=get_color("editor.reference_invalid"))
+            self.query_text.tag_configure("suggestion", foreground=theme_manager.get_color("text.secondary"))
+            self.query_text.tag_configure("reference", foreground=theme_manager.get_color("text.secondary"))
+            self.query_text.tag_configure("reference_valid", foreground=theme_manager.get_color("text.secondary"))
+            self.query_text.tag_configure("reference_invalid", foreground=theme_manager.get_color("buttons.danger_bg"))
         
         if hasattr(self, 'line_numbers'):
             self.line_numbers.configure(
-                bg=get_color("editor.line_numbers_bg"),
-                fg=get_color("editor.line_numbers_text")
+                bg=theme_manager.get_color("background.secondary"),
+                fg=theme_manager.get_color("text.secondary")
             )
         
         # Update info labels
         if hasattr(self, 'query_info'):
-            self.query_info.configure(text_color=get_color("text.primary"))
+            self.query_info.configure(text_color=theme_manager.get_color("text.primary"))
         
         if hasattr(self, 'execution_time'):
-            self.execution_time.configure(text_color=get_color("text.primary"))
+            self.execution_time.configure(text_color=theme_manager.get_color("text.primary"))
         
         # Update autocomplete popup if it exists
         if hasattr(self, 'autocomplete_popup') and self.autocomplete_popup:
             try:
-                self.autocomplete_popup.configure(bg=get_color("background.main"))
+                self.autocomplete_popup.configure(bg=theme_manager.get_color("background.main"))
             except:
                 pass
         
         if hasattr(self, 'autocomplete_listbox') and self.autocomplete_listbox:
             try:
                 self.autocomplete_listbox.configure(
-                    bg=get_color("background.main"),
-                    fg=get_color("text.primary"),
-                    selectbackground=get_color("buttons.primary_bg"),
-                    selectforeground=get_color("buttons.primary_text")
+                    bg=theme_manager.get_color("background.main"),
+                    fg=theme_manager.get_color("text.primary"),
+                    selectbackground=theme_manager.get_color("buttons.primary_bg"),
+                    selectforeground=theme_manager.get_color("buttons.primary_text")
                 )
             except:
                 pass
@@ -1841,8 +1841,8 @@ SELECT version();"""
             if isinstance(child, ctk.CTkFrame):
                 try:
                     if "toolbar" in str(child).lower():
-                        child.configure(fg_color=get_color("background.secondary"))
+                        child.configure(fg_color=theme_manager.get_color("background.secondary"))
                     else:
-                        child.configure(fg_color=get_color("background.main"))
+                        child.configure(fg_color=theme_manager.get_color("background.main"))
                 except:
                     pass

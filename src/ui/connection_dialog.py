@@ -99,11 +99,11 @@ class ConnectionDialog(ctk.CTkToplevel):
             font=("Consolas", 11),
             bg=theme_manager.get_color("background.main"),
             fg=theme_manager.get_color("text.primary"),
-            selectbackground=theme_manager.get_color("accent.primary"),
+            selectbackground=theme_manager.get_color("accent.main"),
             selectforeground="white",
             borderwidth=1,
             highlightthickness=1,
-            highlightcolor=theme_manager.get_color("accent.primary"),
+            highlightcolor=theme_manager.get_color("accent.main"),
             relief="solid"
         )
         scrollbar = tk.Scrollbar(listbox_frame, orient="vertical")
@@ -160,7 +160,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         self.delete_btn.pack(side="left", padx=8, pady=8)
         
         # Separator
-        separator = ctk.CTkFrame(main_frame, height=3, fg_color=theme_manager.get_color("accent.primary"), corner_radius=2)
+        separator = ctk.CTkFrame(main_frame, height=3, fg_color=theme_manager.get_color("accent.main"), corner_radius=2)
         separator.pack(fill="x", pady=(0, 25))
         
         # New connection section
@@ -538,9 +538,9 @@ class ConnectionDialog(ctk.CTkToplevel):
                                     )
                             elif isinstance(child, ctk.CTkEntry):
                                 child.configure(
-                                    fg_color=theme_manager.get_color("inputs.bg"),
-                                    text_color=theme_manager.get_color("inputs.text"),
-                                    border_color=theme_manager.get_color("inputs.border")
+                                    fg_color=theme_manager.get_color("editor.background"),
+                                    text_color=theme_manager.get_color("text.primary"),
+                                    border_color=theme_manager.get_color("accent.main")
                                 )
                                 
             # Update listbox colors if it exists
@@ -548,8 +548,8 @@ class ConnectionDialog(ctk.CTkToplevel):
                 self.connection_listbox.configure(
                     bg=theme_manager.get_color("background.main"),
                     fg=theme_manager.get_color("text.primary"),
-                    selectbackground=theme_manager.get_color("accent.primary"),
-                    highlightcolor=theme_manager.get_color("accent.primary")
+                    selectbackground=theme_manager.get_color("accent.main"),
+                    highlightcolor=theme_manager.get_color("accent.main")
                 )
                 
         except Exception as e:

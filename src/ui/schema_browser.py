@@ -35,7 +35,7 @@ class QueryTooltip:
         tw.wm_geometry(f"+{x}+{y}")
         
         # Create frame with border
-        frame = tk.Frame(tw, background=theme_manager.get_color("accent.primary"), borderwidth=1, relief="solid")
+        frame = tk.Frame(tw, background=theme_manager.get_color("accent.main"), borderwidth=1, relief="solid")
         frame.pack()
         
         # Create text widget for query preview
@@ -101,7 +101,7 @@ class SchemaBrowser(ctk.CTkFrame):
     def create_widgets(self):
         """Create schema browser widgets"""
         # ===== HEADER: Connection Controls =====
-        header_frame = ctk.CTkFrame(self, fg_color=theme_manager.get_color("accent.primary"), corner_radius=0)
+        header_frame = ctk.CTkFrame(self, fg_color=theme_manager.get_color("accent.main"), corner_radius=0)
         header_frame.pack(fill="x", padx=0, pady=0)
         
         # Title and controls container
@@ -422,7 +422,7 @@ class SchemaBrowser(ctk.CTkFrame):
                         borderwidth=1,
                         font=("Segoe UI", 10, "bold"))
         style.map("Treeview",
-                  background=[('selected', theme_manager.get_color("accent.primary"))],
+                  background=[('selected', theme_manager.get_color("accent.main"))],
                   foreground=[('selected', theme_manager.get_color("buttons.primary_text"))])
         
         # Configure scrollbars

@@ -13,10 +13,6 @@ from dataclasses import dataclass, asdict
 @dataclass
 class UserConfig:
     """User configuration data structure"""
-    # Theme settings
-    default_theme: str = "default"
-    theme_mode: str = "light"  # light, dark, system
-    
     # Window settings
     window_size: str = "1400x900"
     window_maximized: bool = False

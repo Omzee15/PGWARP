@@ -21,9 +21,9 @@ class ThemeManager:
         self.themes_dir = Path(__file__).parent.parent.parent / "themes"
         self.themes_dir.mkdir(exist_ok=True)
         
-        # Load available themes - don't set default here
-        # Let the config manager handle the initial theme setting
+        # Load available themes and set default
         self.load_available_themes()
+        self.initialize_with_fallback("default")
     
     def load_available_themes(self):
         """Load all available theme files"""
@@ -77,10 +77,10 @@ class ThemeManager:
     
     def get_color(self, color_path: str, fallback: str = "#000000") -> str:
         """
-        Get a color from the current theme using dot notation or VS Code keys
+        Get a color from the current theme using dot notation
         
         Args:
-            color_path: Color path like 'primary.main', 'text.primary', or VS Code keys like 'editor.background'
+            color_path: Color path like 'primary.main', 'text.primary'
             fallback: Default color if path not found
             
         Returns:
@@ -91,11 +91,7 @@ class ThemeManager:
         
         colors = self.current_theme.get('colors', {})
         
-        # First try direct VS Code key lookup
-        if color_path in colors:
-            return colors[color_path]
-        
-        # Then try dot notation for nested colors
+        # Try dot notation for nested colors
         try:
             keys = color_path.split('.')
             value = colors
@@ -130,18 +126,12 @@ class ThemeManager:
             'buttons.primary_bg': '#9B8F5E',
             'buttons.primary_text': '#FFFFFF',
             'buttons.primary_hover': '#87795A',
-            
-            # VS Code style colors
-            'editor.foreground': '#3E2723',
-            'sideBar.background': '#E8DFD0',
-            'sideBar.foreground': '#3E2723',
-            'button.background': '#9B8F5E',
-            'button.foreground': '#FFFFFF',
-            'button.hoverBackground': '#87795A',
-            'input.background': '#FFFFFF',
-            'input.foreground': '#3E2723',
-            'input.border': '#D9CDBF',
-            'panel.background': '#F5EFE7',
+            'buttons.secondary_bg': '#E8DFD0',
+            'buttons.secondary_hover': '#D9CDBF',
+            'buttons.secondary_text': '#3E2723',
+            'buttons.danger_bg': '#C4756C',
+            'buttons.danger_hover': '#A85E56',
+            'buttons.danger_text': '#FFFFFF',
         }
         
         return fallback_colors.get(color_path, fallback)

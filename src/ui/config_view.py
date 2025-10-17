@@ -93,14 +93,6 @@ class ConfigView(ctk.CTkFrame):
         self.create_toggle_row(display_frame, "Show Row Numbers", True)
         self.create_toggle_row(display_frame, "Alternating Row Colors", True)
         
-        # Theme Settings Section
-        self.create_section(main_container, "🎨 Theme Settings")
-        
-        theme_frame = ctk.CTkFrame(main_container, fg_color=theme_manager.get_color("background.secondary"), corner_radius=8)
-        theme_frame.pack(fill="x", pady=(0, 20))
-        
-        self.create_theme_selector(theme_frame)
-        
         # Export Settings Section
         self.create_section(main_container, "📤 Export Settings")
         
@@ -189,7 +181,7 @@ Built with Python, CustomTkinter, and LangChain.
         label.pack(side="left")
         
         # Separator line
-        separator = ctk.CTkFrame(section_frame, height=2, fg_color=theme_manager.get_color("accent.primary"), corner_radius=1)
+        separator = ctk.CTkFrame(section_frame, height=2, fg_color=theme_manager.get_color("accent.main"), corner_radius=1)
         separator.pack(side="left", fill="x", expand=True, padx=(10, 0))
     
     def create_setting_row(self, parent, label_text: str, default_value: str, is_password: bool = False):
@@ -209,9 +201,9 @@ Built with Python, CustomTkinter, and LangChain.
             row_frame,
             placeholder_text=default_value,
             width=200,
-            fg_color=theme_manager.get_color("inputs.bg"),
-            text_color=theme_manager.get_color("inputs.text"),
-            border_color=theme_manager.get_color("inputs.border")
+            fg_color=theme_manager.get_color("editor.background"),
+            text_color=theme_manager.get_color("text.primary"),
+            border_color=theme_manager.get_color("accent.main")
         )
     
     def create_toggle_row(self, parent, label_text: str, default_value: bool):
@@ -264,151 +256,13 @@ Built with Python, CustomTkinter, and LangChain.
                             for child in widget.winfo_children():
                                 if isinstance(child, ctk.CTkOptionMenu):
                                     child.configure(
-                                        fg_color=theme_manager.get_color("inputs.bg"),
-                                        text_color=theme_manager.get_color("inputs.text"),
+                                        fg_color=theme_manager.get_color("editor.background"),
+                                        text_color=theme_manager.get_color("text.primary"),
                                         button_color=theme_manager.get_color("buttons.primary_bg"),
                                         button_hover_color=theme_manager.get_color("buttons.primary_hover")
                                     )
             except Exception as e:
                 print(f"Error applying theme to config view: {e}")
-                
-    def refresh_theme_selector(self):
-        """Refresh the theme selector to reflect current theme"""
-        if hasattr(self, 'theme_var'):
-            current_theme = theme_manager.get_current_theme()
-            display_name = theme_manager.get_theme_display_name(current_theme)
-            self.theme_var.set(display_name)
-    
-    def create_theme_selector(self, parent):
-        """Create theme selection controls"""
-        row_frame = ctk.CTkFrame(parent, fg_color="transparent")
-        row_frame.pack(fill="x", padx=15, pady=8)
-        
-        label = ctk.CTkLabel(
-            row_frame,
-            text="Default Theme:",
-            font=ctk.CTkFont(size=12),
-            text_color=theme_manager.get_color("text.primary"),
-            width=200,
-            anchor="w"
-        )
-        label.pack(side="left", padx=(0, 10))
-        
-        # Get available themes with display names
-        theme_display_names = theme_manager.get_theme_display_names()
-        theme_files = list(theme_display_names.keys())
-        theme_labels = list(theme_display_names.values())
-        
-        current_theme = config_manager.get('default_theme', 'default')
-        
-        # Theme dropdown with display names
-        self.theme_dropdown = ctk.CTkComboBox(
-            row_frame,
-            values=theme_labels,
-            command=self.on_theme_change,
-            width=200,
-            font=ctk.CTkFont(size=12),
-            dropdown_font=ctk.CTkFont(size=12),
-            corner_radius=6,
-            fg_color=theme_manager.get_color("background.secondary"),
-            border_color=theme_manager.get_color("accent.main"),
-            button_color=theme_manager.get_color("buttons.primary_bg"),
-            button_hover_color=theme_manager.get_color("buttons.primary_hover")
-        )
-        
-        # Set current theme by display name
-        if current_theme in theme_display_names:
-            current_display_name = theme_display_names[current_theme]
-            self.theme_dropdown.set(current_display_name)
-        else:
-            self.theme_dropdown.set(theme_labels[0] if theme_labels else "Default")
-        
-        self.theme_dropdown.pack(side="left", padx=(0, 10))
-        
-        # Store mapping for lookup
-        self.theme_file_map = {display_name: file_name for file_name, display_name in theme_display_names.items()}
-        
-        # Apply button
-        apply_btn = ctk.CTkButton(
-            row_frame,
-            text="✓ Apply",
-            command=self.apply_theme,
-            width=80,
-            height=28,
-            font=ctk.CTkFont(size=11),
-            fg_color=theme_manager.get_color("buttons.primary_bg"),
-            hover_color=theme_manager.get_color("buttons.primary_hover"),
-            corner_radius=6
-        )
-        apply_btn.pack(side="left", padx=(5, 0))
-    
-    def on_theme_change(self, selected_display_name):
-        """Handle theme selection change (updates config but doesn't apply immediately)"""
-        try:
-            # Get the theme filename from display name
-            theme_file = self.theme_file_map.get(selected_display_name)
-            if theme_file:
-                # Update config but don't save yet (wait for apply button)
-                self.config.default_theme = theme_file
-                print(f"Theme selection changed to: {selected_display_name} ({theme_file})")
-        except Exception as e:
-            print(f"Error handling theme change: {e}")
-    
-    def apply_theme(self):
-        """Apply the selected theme immediately and save to config"""
-        try:
-            selected_display_name = self.theme_dropdown.get()
-            theme_file = self.theme_file_map.get(selected_display_name)
-            
-            if theme_file:
-                # Apply theme immediately
-                if theme_manager.set_theme(theme_file):
-                    # Update config and save
-                    config_manager.set('default_theme', theme_file)
-                    config_manager.save_config()
-                    
-                    # Apply theme to main window if available
-                    if self.main_window and hasattr(self.main_window, 'apply_theme'):
-                        self.main_window.apply_theme()
-                    
-                    # Refresh this config view
-                    self.apply_theme_to_self()
-                    
-                    messagebox.showinfo("Theme Applied", f"Theme '{selected_display_name}' applied and saved as default!")
-                else:
-                    messagebox.showerror("Error", f"Failed to apply theme: {selected_display_name}")
-            else:
-                messagebox.showerror("Error", "Invalid theme selection")
-                
-        except Exception as e:
-            print(f"Error applying theme: {e}")
-            messagebox.showerror("Error", f"Error applying theme: {str(e)}")
-    
-    def apply_theme_to_self(self):
-        """Apply current theme colors to this config view"""
-        try:
-            self.configure(fg_color=theme_manager.get_color("background.main"))
-            
-            # Update any child widgets that need theme updates
-            for widget in self.winfo_children():
-                if isinstance(widget, ctk.CTkScrollableFrame):
-                    widget.configure(fg_color=theme_manager.get_color("background.main"))
-                    
-        except Exception as e:
-            print(f"Error applying theme to config view: {e}")
-    
-    def refresh_theme_selector(self):
-        """Refresh the theme selector with current settings"""
-        try:
-            current_theme = config_manager.get('default_theme', 'default')
-            theme_display_names = theme_manager.get_theme_display_names()
-            
-            if current_theme in theme_display_names:
-                current_display_name = theme_display_names[current_theme]
-                self.theme_dropdown.set(current_display_name)
-                
-        except Exception as e:
-            print(f"Error refreshing theme selector: {e}")
     
     def save_settings(self):
         """Save all settings to configuration file"""
@@ -422,19 +276,9 @@ Built with Python, CustomTkinter, and LangChain.
     
     def reset_settings(self):
         """Reset all settings to defaults"""
-        if messagebox.askyesno("Reset Settings", "Are you sure you want to reset all settings to defaults?\n\nThis will reset:\n• Theme preferences\n• Window settings\n• Database defaults\n• All other preferences"):
+        if messagebox.askyesno("Reset Settings", "Are you sure you want to reset all settings to defaults?\n\nThis will reset:\n• Window settings\n• Database defaults\n• All other preferences"):
             try:
                 config_manager.reset_to_defaults()
-                
-                # Refresh the UI with default values
-                self.refresh_theme_selector()
-                
-                # Apply default theme
-                theme_manager.initialize_with_fallback('default')
-                if self.main_window and hasattr(self.main_window, 'apply_theme'):
-                    self.main_window.apply_theme()
-                
-                self.apply_theme_to_self()
                 messagebox.showinfo("Settings", "Settings reset to defaults!")
                 
             except Exception as e:

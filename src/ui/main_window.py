@@ -349,7 +349,7 @@ class NeuronDBApp(ctk.CTk):
         self.main_paned.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
         
         # Left panel - Schema Browser
-        self.left_frame = ctk.CTkFrame(self.main_paned, width=350, fg_color=theme_manager.get_color("sideBar.background"), corner_radius=8)
+        self.left_frame = ctk.CTkFrame(self.main_paned, width=350, fg_color=theme_manager.get_color("sidebar.background"), corner_radius=8)
         self.main_paned.add(self.left_frame, width=350, minsize=280)
         
         # Schema browser (will be fully initialized after query panel)
@@ -366,12 +366,12 @@ class NeuronDBApp(ctk.CTk):
         # Create tabbed interface for query tools
         # Query notebook
         self.query_notebook = ctk.CTkTabview(self.query_frame, fg_color=theme_manager.get_color("editor.background"), 
-                                       segmented_button_fg_color=theme_manager.get_color("sideBar.background"),
-                                       segmented_button_selected_color=theme_manager.get_color("button.background"),
-                                       segmented_button_selected_hover_color=theme_manager.get_color("button.hoverBackground"),
-                                       segmented_button_unselected_color=theme_manager.get_color("sideBar.background"),
-                                       segmented_button_unselected_hover_color=theme_manager.get_color("sideBarSectionHeader.background"),
-                                       text_color=theme_manager.get_color("editor.foreground"),
+                                       segmented_button_fg_color=theme_manager.get_color("sidebar.background"),
+                                       segmented_button_selected_color=theme_manager.get_color("buttons.primary_bg"),
+                                       segmented_button_selected_hover_color=theme_manager.get_color("buttons.primary_hover"),
+                                       segmented_button_unselected_color=theme_manager.get_color("sidebar.background"),
+                                       segmented_button_unselected_hover_color=theme_manager.get_color("sidebar.header"),
+                                       text_color=theme_manager.get_color("text.primary"),
                                        text_color_disabled="#3E2723")
         self.query_notebook.pack(fill="both", expand=True, padx=0, pady=0)
         
@@ -420,7 +420,7 @@ class NeuronDBApp(ctk.CTk):
         self.results_frame.grid_rowconfigure(1, weight=1)
         
         # Results header
-        results_header = ctk.CTkFrame(self.results_frame, height=45, fg_color=theme_manager.get_color("sideBar.background"), corner_radius=8)
+        results_header = ctk.CTkFrame(self.results_frame, height=45, fg_color=theme_manager.get_color("sidebar.background"), corner_radius=8)
         results_header.grid(row=0, column=0, sticky="ew", padx=0, pady=0)
         results_header.grid_columnconfigure(0, weight=1)
         
@@ -428,7 +428,7 @@ class NeuronDBApp(ctk.CTk):
             results_header, 
             text="Query results will appear here", 
             font=ctk.CTkFont(size=15, weight="bold"),
-            text_color=theme_manager.get_color("sideBar.foreground")
+            text_color=theme_manager.get_color("sidebar.text")
         )
         self.results_label.grid(row=0, column=0, sticky="w", padx=15, pady=8)
         
@@ -444,8 +444,8 @@ class NeuronDBApp(ctk.CTk):
             width=80,
             height=32,
             state="disabled",
-            fg_color=theme_manager.get_color("button.background"),
-            hover_color=theme_manager.get_color("button.hoverBackground"),
+            fg_color=theme_manager.get_color("buttons.primary_bg"),
+            hover_color=theme_manager.get_color("buttons.primary_hover"),
             corner_radius=6
         )
         self.export_csv_btn.grid(row=0, column=0, padx=(0, 5))
@@ -458,8 +458,8 @@ class NeuronDBApp(ctk.CTk):
             width=80,
             height=32,
             state="disabled",
-            fg_color=theme_manager.get_color("button.background"),
-            hover_color=theme_manager.get_color("button.hoverBackground"),
+            fg_color=theme_manager.get_color("buttons.primary_bg"),
+            hover_color=theme_manager.get_color("buttons.primary_hover"),
             corner_radius=6
         )
         self.export_excel_btn.grid(row=0, column=1, padx=(5, 0))
@@ -696,14 +696,14 @@ class NeuronDBApp(ctk.CTk):
         dialog.grab_set()
         
         # Title label
-        title_frame = ctk.CTkFrame(dialog, fg_color=theme_manager.get_color("button.background"))
+        title_frame = ctk.CTkFrame(dialog, fg_color=theme_manager.get_color("buttons.primary_bg"))
         title_frame.pack(fill="x", padx=0, pady=0)
         
         title_label = ctk.CTkLabel(
             title_frame,
             text=f"📊 Row {self.selected_cell_row + 1} • {self.selected_cell_column}",
             font=ctk.CTkFont(size=12, weight="bold"),
-            text_color=theme_manager.get_color("button.foreground")
+            text_color=theme_manager.get_color("buttons.primary_text")
         )
         title_label.pack(pady=8, padx=12)
         
@@ -715,7 +715,7 @@ class NeuronDBApp(ctk.CTk):
             text_frame,
             wrap="word",
             bg=theme_manager.get_color("editor.background"),
-            fg=theme_manager.get_color("editor.foreground"),
+            fg=theme_manager.get_color("text.primary"),
             font=("Consolas", 11),
             padx=10,
             pady=10
