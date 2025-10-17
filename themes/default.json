@@ -1,0 +1,100 @@
+{
+  "name": "Default Theme",
+  "description": "The default PgWarp theme with warm brown tones",
+  "colors": {
+    "primary": {
+      "main": "#F5EFE7",
+      "light": "#FFFFFF",
+      "dark": "#E8DFD0"
+    },
+    "secondary": {
+      "main": "#E8DFD0",
+      "light": "#F2E8DC",
+      "dark": "#D9CDBF"
+    },
+    "accent": {
+      "main": "#9B8F5E",
+      "light": "#B5A877",
+      "dark": "#87795A",
+      "darker": "#6B5E45"
+    },
+    "text": {
+      "primary": "#3E2723",
+      "secondary": "#8B7355",
+      "inverse": "#FFFFFF",
+      "disabled": "#A1968A"
+    },
+    "background": {
+      "main": "#F5EFE7",
+      "secondary": "#E8DFD0",
+      "accent": "#D9CDBF",
+      "header": "#9B8F5E"
+    },
+    "interaction": {
+      "hover": "#87795A",
+      "selected": "#9B8F5E",
+      "focus": "#9B8F5E",
+      "disabled": "#D9CDBF"
+    },
+    "feedback": {
+      "success": "#2E7D32",
+      "success_bg": "#E8F5E8",
+      "error": "#D32F2F",
+      "error_bg": "#FFEBEE",
+      "warning": "#FF6B35",
+      "warning_bg": "#FFF3E0",
+      "info": "#1976D2",
+      "info_bg": "#E3F2FD"
+    },
+    "editor": {
+      "background": "#F5EFE7",
+      "text": "#3E2723",
+      "line_numbers_bg": "#E8DFD0",
+      "line_numbers_text": "#8B7355",
+      "cursor": "#9B8F5E",
+      "selection_bg": "#9B8F5E",
+      "selection_text": "#FFFFFF",
+      "highlight_border": "#9B8F5E",
+      "reference_text": "#1976D2",
+      "reference_invalid": "#D32F2F"
+    },
+    "sidebar": {
+      "background": "#E8DFD0",
+      "header": "#D9CDBF",
+      "text": "#3E2723",
+      "secondary_text": "#8B7355"
+    },
+    "buttons": {
+      "primary_bg": "#9B8F5E",
+      "primary_hover": "#87795A",
+      "primary_text": "#FFFFFF",
+      "secondary_bg": "#E8DFD0",
+      "secondary_hover": "#D9CDBF",
+      "secondary_text": "#3E2723",
+      "danger_bg": "#C4756C",
+      "danger_hover": "#A85E56",
+      "danger_text": "#FFFFFF"
+    },
+    "tooltip": {
+      "background": "#E8DFD0",
+      "border": "#E8DFD0",
+      "title_bg": "#E8DFD0",
+      "title_text": "#3E2723",
+      "content_bg": "#F5EFE7",
+      "content_text": "#3E2723",
+      "separator": "#9B8F5E"
+    },
+    "scrollbar": {
+      "track": "#F5EFE7",
+      "thumb": "#E8DFD0",
+      "arrow": "#3E2723"
+    },
+    "table": {
+      "background": "#F5EFE7",
+      "header": "#E8DFD0",
+      "text": "#3E2723",
+      "selected": "#9B8F5E",
+      "border": "#E8DFD0"
+    }
+  }
+}

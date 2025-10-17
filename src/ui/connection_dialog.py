@@ -6,6 +6,12 @@ import tkinter as tk
 from tkinter import messagebox
 import customtkinter as ctk
 from typing import Dict, Any, Optional
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.append(str(Path(__file__).parent.parent))
+from utils.theme_manager import theme_manager
 
 class ConnectionDialog(ctk.CTkToplevel):
     """Dialog for creating and managing database connections"""
@@ -60,7 +66,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         self.scrollable_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
         # Main frame inside scrollable frame
-        main_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="#F5EFE7", corner_radius=8)
+        main_frame = ctk.CTkFrame(self.scrollable_frame, fg_color=theme_manager.get_color("background.main"), corner_radius=8)
         main_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Title
@@ -72,7 +78,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         title_label.pack(pady=(0, 20))
         
         # Saved connections section
-        saved_frame = ctk.CTkFrame(main_frame, fg_color="#E8DFD0", corner_radius=8)
+        saved_frame = ctk.CTkFrame(main_frame, fg_color=theme_manager.get_color("background.secondary"), corner_radius=8)
         saved_frame.pack(fill="x", pady=(0, 25))
         
         saved_label = ctk.CTkLabel(
@@ -83,7 +89,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         saved_label.pack(pady=(15, 10))
         
         # Connections listbox frame
-        listbox_frame = ctk.CTkFrame(saved_frame, fg_color="#E8DFD0", corner_radius=8)
+        listbox_frame = ctk.CTkFrame(saved_frame, fg_color=theme_manager.get_color("background.secondary"), corner_radius=8)
         listbox_frame.pack(fill="x", padx=15, pady=(0, 15))
         
         # Create listbox with scrollbar
@@ -91,13 +97,13 @@ class ConnectionDialog(ctk.CTkToplevel):
             listbox_frame, 
             height=5,
             font=("Consolas", 11),
-            bg="#F5EFE7",
-            fg="#3E2723",
-            selectbackground="#9B8F5E",
+            bg=theme_manager.get_color("background.main"),
+            fg=theme_manager.get_color("text.primary"),
+            selectbackground=theme_manager.get_color("accent.main"),
             selectforeground="white",
             borderwidth=1,
             highlightthickness=1,
-            highlightcolor="#9B8F5E",
+            highlightcolor=theme_manager.get_color("accent.main"),
             relief="solid"
         )
         scrollbar = tk.Scrollbar(listbox_frame, orient="vertical")
@@ -112,7 +118,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         self.connections_listbox.bind("<Double-Button-1>", self.on_connection_double_click)
         
         # Connection buttons
-        conn_buttons_frame = ctk.CTkFrame(saved_frame, fg_color="#E8DFD0")
+        conn_buttons_frame = ctk.CTkFrame(saved_frame, fg_color=theme_manager.get_color("background.secondary"))
         conn_buttons_frame.pack(fill="x", padx=15, pady=(0, 15))
         
         self.connect_btn = ctk.CTkButton(
@@ -144,8 +150,8 @@ class ConnectionDialog(ctk.CTkToplevel):
             text="Delete", 
             command=self.delete_selected,
             state="disabled",
-            fg_color="#9B8F5E",
-            hover_color="#87795A",
+            fg_color=theme_manager.get_color("buttons.primary_bg"),
+            hover_color=theme_manager.get_color("buttons.primary_hover"),
             height=32,
             width=80,
             font=ctk.CTkFont(size=12),
@@ -154,7 +160,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         self.delete_btn.pack(side="left", padx=8, pady=8)
         
         # Separator
-        separator = ctk.CTkFrame(main_frame, height=3, fg_color="#9B8F5E", corner_radius=2)
+        separator = ctk.CTkFrame(main_frame, height=3, fg_color=theme_manager.get_color("accent.main"), corner_radius=2)
         separator.pack(fill="x", pady=(0, 25))
         
         # New connection section
@@ -166,7 +172,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         new_conn_label.pack(pady=(0, 15))
         
         # Connection form
-        form_frame = ctk.CTkFrame(main_frame, fg_color="#E8DFD0", corner_radius=8)
+        form_frame = ctk.CTkFrame(main_frame, fg_color=theme_manager.get_color("background.secondary"), corner_radius=8)
         form_frame.pack(fill="x", pady=(0, 20))
         
         # Connection name
@@ -189,7 +195,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         # Database
         ctk.CTkLabel(form_frame, text="Database:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=15, pady=(0, 5))
         db_note = ctk.CTkLabel(form_frame, text="(Initial database to connect to - usually 'postgres')", 
-                              font=ctk.CTkFont(size=10), text_color="#8B7355")
+                              font=ctk.CTkFont(size=10), text_color=theme_manager.get_color("text.secondary"))
         db_note.pack(anchor="w", padx=15)
         self.database_entry = ctk.CTkEntry(form_frame, placeholder_text="postgres", height=32, font=ctk.CTkFont(size=12), corner_radius=6)
         self.database_entry.pack(fill="x", padx=15, pady=(5, 15))
@@ -206,7 +212,7 @@ class ConnectionDialog(ctk.CTkToplevel):
         self.password_entry.pack(fill="x", padx=15, pady=(0, 15))
         
         # Dialog buttons
-        buttons_frame = ctk.CTkFrame(main_frame, fg_color="#F5EFE7")
+        buttons_frame = ctk.CTkFrame(main_frame, fg_color=theme_manager.get_color("background.main"))
         buttons_frame.pack(fill="x", pady=(20, 10))
         
         self.test_btn = ctk.CTkButton(
@@ -238,8 +244,8 @@ class ConnectionDialog(ctk.CTkToplevel):
             height=36,
             width=100,
             font=ctk.CTkFont(size=12),
-            fg_color="#9B8F5E",
-            hover_color="#87795A",
+            fg_color=theme_manager.get_color("buttons.primary_bg"),
+            hover_color=theme_manager.get_color("buttons.primary_hover"),
             corner_radius=6
         )
         self.connect_now_btn.pack(side="left", padx=8, pady=10)
@@ -251,8 +257,8 @@ class ConnectionDialog(ctk.CTkToplevel):
             height=36,
             width=140,
             font=ctk.CTkFont(size=12),
-            fg_color="#9B8F5E",
-            hover_color="#87795A",
+            fg_color=theme_manager.get_color("buttons.primary_bg"),
+            hover_color=theme_manager.get_color("buttons.primary_hover"),
             corner_radius=6
         )
         self.save_connect_btn.pack(side="left", padx=8, pady=10)
@@ -261,8 +267,8 @@ class ConnectionDialog(ctk.CTkToplevel):
             buttons_frame, 
             text="Cancel", 
             command=self.cancel,
-            fg_color="#E8DFD0",
-            hover_color="#D9CDBF",
+            fg_color=theme_manager.get_color("buttons.secondary_bg"),
+            hover_color=theme_manager.get_color("buttons.secondary_hover"),
             height=36,
             width=80,
             font=ctk.CTkFont(size=12)
@@ -502,3 +508,49 @@ class ConnectionDialog(ctk.CTkToplevel):
         """Cancel dialog"""
         self.selected_connection = None
         self.destroy()
+    
+    def apply_theme(self):
+        """Apply the current theme to all components"""
+        try:
+            # Update main container
+            if hasattr(self, 'scrollable_frame'):
+                for widget in self.scrollable_frame.winfo_children():
+                    if isinstance(widget, ctk.CTkFrame):
+                        widget.configure(fg_color=theme_manager.get_color("background.main"))
+                        
+                        # Update child frames and widgets
+                        for child in widget.winfo_children():
+                            if isinstance(child, ctk.CTkFrame):
+                                if hasattr(child, 'corner_radius'):
+                                    child.configure(fg_color=theme_manager.get_color("background.secondary"))
+                            elif isinstance(child, ctk.CTkLabel):
+                                child.configure(text_color=theme_manager.get_color("text.primary"))
+                            elif isinstance(child, ctk.CTkButton):
+                                if "Delete" in str(child.cget("text")) or "Connect" in str(child.cget("text")):
+                                    child.configure(
+                                        fg_color=theme_manager.get_color("buttons.primary_bg"),
+                                        hover_color=theme_manager.get_color("buttons.primary_hover")
+                                    )
+                                else:
+                                    child.configure(
+                                        fg_color=theme_manager.get_color("buttons.secondary_bg"),
+                                        hover_color=theme_manager.get_color("buttons.secondary_hover")
+                                    )
+                            elif isinstance(child, ctk.CTkEntry):
+                                child.configure(
+                                    fg_color=theme_manager.get_color("editor.background"),
+                                    text_color=theme_manager.get_color("text.primary"),
+                                    border_color=theme_manager.get_color("accent.main")
+                                )
+                                
+            # Update listbox colors if it exists
+            if hasattr(self, 'connection_listbox'):
+                self.connection_listbox.configure(
+                    bg=theme_manager.get_color("background.main"),
+                    fg=theme_manager.get_color("text.primary"),
+                    selectbackground=theme_manager.get_color("accent.main"),
+                    highlightcolor=theme_manager.get_color("accent.main")
+                )
+                
+        except Exception as e:
+            print(f"Error applying theme to connection dialog: {e}")

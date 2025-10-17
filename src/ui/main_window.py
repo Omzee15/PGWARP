@@ -20,6 +20,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 from database.connection import DatabaseConnection, ConnectionManager
 from ai.assistant import NeuronDBAI
 from utils.helpers import setup_logging
+from utils.theme_manager import theme_manager
+from utils.config_manager import config_manager, apply_startup_theme
 from ui.connection_dialog import ConnectionDialog
 from ui.query_panel import QueryPanel
 from ui.schema_browser import SchemaBrowser
@@ -32,17 +34,80 @@ from config import Config
 ctk.set_appearance_mode("light")  # Modes: "System" (standard), "Dark", "Light"
 ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
 
-# Configure CTk default colors to warm beige/tan theme with olive buttons
-ctk.ThemeManager.theme["CTkFrame"]["fg_color"] = ["#F5EFE7", "#F5EFE7"]
-ctk.ThemeManager.theme["CTk"]["fg_color"] = ["#F5EFE7", "#F5EFE7"]
-ctk.ThemeManager.theme["CTkButton"]["fg_color"] = ["#9B8F5E", "#9B8F5E"]
-ctk.ThemeManager.theme["CTkButton"]["hover_color"] = ["#87795A", "#87795A"]
-ctk.ThemeManager.theme["CTkButton"]["text_color"] = ["white", "white"]
+# Configure CTk default colors using theme manager
+def apply_theme_to_ctk():
+    """Apply current theme colors to CustomTkinter defaults"""
+    try:
+        # Apply background colors
+        ctk.ThemeManager.theme["CTkFrame"]["fg_color"] = [
+            theme_manager.get_color("background.main"), 
+            theme_manager.get_color("background.main")
+        ]
+        ctk.ThemeManager.theme["CTk"]["fg_color"] = [
+            theme_manager.get_color("background.main"), 
+            theme_manager.get_color("background.main")
+        ]
+        
+        # Apply button colors
+        ctk.ThemeManager.theme["CTkButton"]["fg_color"] = [
+            theme_manager.get_color("buttons.primary_bg"), 
+            theme_manager.get_color("buttons.primary_bg")
+        ]
+        ctk.ThemeManager.theme["CTkButton"]["hover_color"] = [
+            theme_manager.get_color("buttons.primary_hover"), 
+            theme_manager.get_color("buttons.primary_hover")
+        ]
+        ctk.ThemeManager.theme["CTkButton"]["text_color"] = [
+            theme_manager.get_color("buttons.primary_text"), 
+            theme_manager.get_color("buttons.primary_text")
+        ]
+        
+        # Apply scrollable frame colors
+        ctk.ThemeManager.theme["CTkScrollableFrame"]["fg_color"] = [
+            theme_manager.get_color("background.main"), 
+            theme_manager.get_color("background.main")
+        ]
+        
+        # Apply entry/input colors
+        ctk.ThemeManager.theme["CTkEntry"]["fg_color"] = [
+            theme_manager.get_color("editor.background"), 
+            theme_manager.get_color("editor.background")
+        ]
+        ctk.ThemeManager.theme["CTkEntry"]["border_color"] = [
+            theme_manager.get_color("accent.main"), 
+            theme_manager.get_color("accent.main")
+        ]
+        ctk.ThemeManager.theme["CTkEntry"]["text_color"] = [
+            theme_manager.get_color("text.primary"), 
+            theme_manager.get_color("text.primary")
+        ]
+        
+        # Apply label colors
+        ctk.ThemeManager.theme["CTkLabel"]["text_color"] = [
+            theme_manager.get_color("text.primary"), 
+            theme_manager.get_color("text.primary")
+        ]
+        
+        # Apply optionmenu colors
+        ctk.ThemeManager.theme["CTkOptionMenu"]["fg_color"] = [
+            theme_manager.get_color("buttons.secondary_bg"), 
+            theme_manager.get_color("buttons.secondary_bg")
+        ]
+        ctk.ThemeManager.theme["CTkOptionMenu"]["button_color"] = [
+            theme_manager.get_color("buttons.primary_bg"), 
+            theme_manager.get_color("buttons.primary_bg")
+        ]
+        ctk.ThemeManager.theme["CTkOptionMenu"]["button_hover_color"] = [
+            theme_manager.get_color("buttons.primary_hover"), 
+            theme_manager.get_color("buttons.primary_hover")
+        ]
+        
+        print("Applied theme to CTk components")
+    except Exception as e:
+        print(f"Error applying theme to CTk: {e}")
 
-# Remove grey backgrounds from all components
-ctk.ThemeManager.theme["CTkScrollableFrame"]["fg_color"] = ["#F5EFE7", "#F5EFE7"]
-ctk.ThemeManager.theme["CTkEntry"]["fg_color"] = ["#F5EFE7", "#F5EFE7"]
-ctk.ThemeManager.theme["CTkEntry"]["border_color"] = ["#E8DFD0", "#E8DFD0"]
+# Apply theme
+apply_theme_to_ctk()
 
 class NeuronDBApp(ctk.CTk):
     """Main application window for NeuronDB"""
@@ -55,6 +120,7 @@ class NeuronDBApp(ctk.CTk):
         
         # Initialize core components
         self.db_connection = DatabaseConnection()
+
         self.connection_manager = ConnectionManager()
         self.ai_assistant = None
         self.current_schema = {}
@@ -63,6 +129,15 @@ class NeuronDBApp(ctk.CTk):
         self.title("NeuronDB")
         self.geometry("1600x1100")
         self.minsize(1400, 950)
+        
+        # Initialize theme system with user's preferred theme
+        print(f"Available themes: {theme_manager.list_available_themes()}")
+        preferred_theme = config_manager.get('default_theme', 'default')
+        theme_manager.initialize_with_fallback(preferred_theme)
+        print(f"Current theme: {theme_manager.get_theme_name()}")
+        
+        # Apply theme before creating UI
+        self.apply_theme()
         
         # Configure window for better text display
         self.tk.call('tk', 'scaling', 1.0)  # Ensure consistent scaling
@@ -95,6 +170,82 @@ class NeuronDBApp(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         
         self.logger.info("NeuronDB application initialized")
+    
+    def apply_theme(self):
+        """Apply current theme to all components"""
+        # Re-apply theme to CustomTkinter defaults
+        apply_theme_to_ctk()
+        
+        # Set window background
+        self.configure(fg_color=theme_manager.get_color("background.main"))
+        
+        # Update main interface components if they exist
+        if hasattr(self, 'left_frame'):
+            self.left_frame.configure(fg_color=theme_manager.get_color("sidebar.background"))
+        
+        if hasattr(self, 'main_tabs'):
+            self.main_tabs.configure(
+                fg_color=theme_manager.get_color("background.main"),
+                segmented_button_fg_color=theme_manager.get_color("sidebar.background"),
+                segmented_button_selected_color=theme_manager.get_color("buttons.primary_bg"),
+                segmented_button_selected_hover_color=theme_manager.get_color("buttons.primary_hover"),
+                segmented_button_unselected_color=theme_manager.get_color("sidebar.background"),
+                segmented_button_unselected_hover_color=theme_manager.get_color("sidebar.header"),
+                text_color=theme_manager.get_color("text.primary"),
+                text_color_disabled=theme_manager.get_color("text.secondary")
+            )
+        
+        if hasattr(self, 'query_notebook'):
+            self.query_notebook.configure(
+                fg_color=theme_manager.get_color("background.main"),
+                segmented_button_fg_color=theme_manager.get_color("sidebar.background")
+            )
+        
+        if hasattr(self, 'status_frame'):
+            self.status_frame.configure(fg_color=theme_manager.get_color("background.secondary"))
+        
+        # Update schema browser theme
+        if hasattr(self, 'schema_browser'):
+            self.schema_browser.apply_theme()
+        
+        # Update query panel theme  
+        if hasattr(self, 'query_panel'):
+            self.query_panel.apply_theme()
+            
+        # Update config view theme
+        if hasattr(self, 'config_view'):
+            self.config_view.apply_theme()
+        
+        # Force UI refresh
+        self.update_idletasks()
+    
+    def switch_theme(self, theme_name: str):
+        """Switch to a different theme and update all components"""
+        from utils.theme_manager import theme_manager
+        from utils.config_manager import config_manager
+        
+        try:
+            if theme_manager.set_theme(theme_name):
+                print(f"Successfully loaded theme: {theme_name}")
+                
+                # Save theme preference to config
+                config_manager.set('default_theme', theme_name)
+                config_manager.save_config()
+                
+                # Apply theme to all components
+                self.apply_theme()
+                
+                # Also update the config view if it exists
+                if hasattr(self, 'config_view'):
+                    self.config_view.refresh_theme_selector()
+                
+                messagebox.showinfo("Theme Changed", f"Theme switched to: {theme_manager.get_theme_name()}")
+                print(f"Theme applied and saved as default")
+            else:
+                messagebox.showerror("Error", f"Could not load theme: {theme_name}")
+        except Exception as e:
+            print(f"Error switching theme: {e}")
+            messagebox.showerror("Error", f"Error switching theme: {str(e)}")
     
     def create_menu_bar(self):
         """Create the application menu bar"""
@@ -132,6 +283,22 @@ class NeuronDBApp(ctk.CTk):
         ai_menu.add_separator()
         ai_menu.add_command(label="Clear Chat History", command=self.clear_ai_history)
         
+        # Theme menu
+        theme_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Theme", menu=theme_menu)
+        
+        # Add available themes to menu
+        from utils.theme_manager import theme_manager
+        available_themes = theme_manager.list_available_themes()
+        theme_display_names = theme_manager.get_theme_display_names()
+        
+        for theme_file in available_themes:
+            display_name = theme_display_names.get(theme_file, theme_file.title())
+            theme_menu.add_command(
+                label=display_name, 
+                command=lambda t=theme_file: self.switch_theme(t)
+            )
+        
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Help", menu=help_menu)
@@ -142,14 +309,14 @@ class NeuronDBApp(ctk.CTk):
         # Create main tabbed interface
         self.main_tabs = ctk.CTkTabview(
             self, 
-            fg_color="#F5EFE7",
-            segmented_button_fg_color="#E8DFD0",
-            segmented_button_selected_color="#9B8F5E",
-            segmented_button_selected_hover_color="#87795A",
-            segmented_button_unselected_color="#E8DFD0",
-            segmented_button_unselected_hover_color="#D9CDBF",
-            text_color="#3E2723",
-            text_color_disabled="#3E2723"
+            fg_color=theme_manager.get_color("background.main"),
+            segmented_button_fg_color=theme_manager.get_color("sidebar.background"),
+            segmented_button_selected_color=theme_manager.get_color("buttons.primary_bg"),
+            segmented_button_selected_hover_color=theme_manager.get_color("buttons.primary_hover"),
+            segmented_button_unselected_color=theme_manager.get_color("sidebar.background"),
+            segmented_button_unselected_hover_color=theme_manager.get_color("sidebar.header"),
+            text_color=theme_manager.get_color("text.primary"),
+            text_color_disabled=theme_manager.get_color("text.secondary")
         )
         self.main_tabs.grid(row=0, column=0, sticky="nsew", padx=10, pady=(10, 0))
         
@@ -166,7 +333,7 @@ class NeuronDBApp(ctk.CTk):
         self.db_diagram_view.pack(fill="both", expand=True)
         
         # Create Config tab
-        self.config_view = ConfigView(self.main_tabs.tab("Config"))
+        self.config_view = ConfigView(self.main_tabs.tab("Config"), main_window=self)
         self.config_view.pack(fill="both", expand=True)
     
     def create_db_query_tab(self):
@@ -181,8 +348,8 @@ class NeuronDBApp(ctk.CTk):
         self.main_paned = tk.PanedWindow(db_query_tab, orient=tk.HORIZONTAL, sashrelief=tk.RAISED, sashwidth=6)
         self.main_paned.grid(row=0, column=0, sticky="nsew", padx=0, pady=0)
         
-        # Left panel - Schema browser
-        self.left_frame = ctk.CTkFrame(self.main_paned, width=350, fg_color="#E8DFD0", corner_radius=8)
+        # Left panel - Schema Browser
+        self.left_frame = ctk.CTkFrame(self.main_paned, width=350, fg_color=theme_manager.get_color("sidebar.background"), corner_radius=8)
         self.main_paned.add(self.left_frame, width=350, minsize=280)
         
         # Schema browser (will be fully initialized after query panel)
@@ -197,13 +364,14 @@ class NeuronDBApp(ctk.CTk):
         self.right_paned.add(self.query_frame, height=400, minsize=250)
         
         # Create tabbed interface for query tools
-        self.query_notebook = ctk.CTkTabview(self.query_frame, fg_color="#F5EFE7", 
-                                       segmented_button_fg_color="#E8DFD0",
-                                       segmented_button_selected_color="#9B8F5E",
-                                       segmented_button_selected_hover_color="#87795A",
-                                       segmented_button_unselected_color="#E8DFD0",
-                                       segmented_button_unselected_hover_color="#D9CDBF",
-                                       text_color="#3E2723",
+        # Query notebook
+        self.query_notebook = ctk.CTkTabview(self.query_frame, fg_color=theme_manager.get_color("editor.background"), 
+                                       segmented_button_fg_color=theme_manager.get_color("sidebar.background"),
+                                       segmented_button_selected_color=theme_manager.get_color("buttons.primary_bg"),
+                                       segmented_button_selected_hover_color=theme_manager.get_color("buttons.primary_hover"),
+                                       segmented_button_unselected_color=theme_manager.get_color("sidebar.background"),
+                                       segmented_button_unselected_hover_color=theme_manager.get_color("sidebar.header"),
+                                       text_color=theme_manager.get_color("text.primary"),
                                        text_color_disabled="#3E2723")
         self.query_notebook.pack(fill="both", expand=True, padx=0, pady=0)
         
@@ -225,7 +393,8 @@ class NeuronDBApp(ctk.CTk):
             self.on_saved_query_select,
             self.ai_assistant,
             self.show_connection_dialog,  # on_connect
-            self.disconnect_database       # on_disconnect
+            self.disconnect_database,     # on_disconnect
+            self.db_connection            # db_connection
         )
         self.schema_browser.pack(fill="both", expand=True, padx=0, pady=0)
         
@@ -251,7 +420,7 @@ class NeuronDBApp(ctk.CTk):
         self.results_frame.grid_rowconfigure(1, weight=1)
         
         # Results header
-        results_header = ctk.CTkFrame(self.results_frame, height=45, fg_color="#E8DFD0", corner_radius=8)
+        results_header = ctk.CTkFrame(self.results_frame, height=45, fg_color=theme_manager.get_color("sidebar.background"), corner_radius=8)
         results_header.grid(row=0, column=0, sticky="ew", padx=0, pady=0)
         results_header.grid_columnconfigure(0, weight=1)
         
@@ -259,7 +428,7 @@ class NeuronDBApp(ctk.CTk):
             results_header, 
             text="Query results will appear here", 
             font=ctk.CTkFont(size=15, weight="bold"),
-            text_color="#3E2723"
+            text_color=theme_manager.get_color("sidebar.text")
         )
         self.results_label.grid(row=0, column=0, sticky="w", padx=15, pady=8)
         
@@ -275,8 +444,8 @@ class NeuronDBApp(ctk.CTk):
             width=80,
             height=32,
             state="disabled",
-            fg_color="#9B8F5E",
-            hover_color="#87795A",
+            fg_color=theme_manager.get_color("buttons.primary_bg"),
+            hover_color=theme_manager.get_color("buttons.primary_hover"),
             corner_radius=6
         )
         self.export_csv_btn.grid(row=0, column=0, padx=(0, 5))
@@ -289,8 +458,8 @@ class NeuronDBApp(ctk.CTk):
             width=80,
             height=32,
             state="disabled",
-            fg_color="#9B8F5E",
-            hover_color="#87795A",
+            fg_color=theme_manager.get_color("buttons.primary_bg"),
+            hover_color=theme_manager.get_color("buttons.primary_hover"),
             corner_radius=6
         )
         self.export_excel_btn.grid(row=0, column=1, padx=(5, 0))
@@ -337,7 +506,7 @@ class NeuronDBApp(ctk.CTk):
     
     def create_status_bar(self):
         """Create the status bar"""
-        self.status_frame = ctk.CTkFrame(self, height=30, fg_color="#E8DFD0")
+        self.status_frame = ctk.CTkFrame(self, height=30, fg_color=theme_manager.get_color("statusBar.background"))
         self.status_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=(0, 5))
         self.status_frame.grid_columnconfigure(0, weight=1)
         
@@ -353,35 +522,35 @@ class NeuronDBApp(ctk.CTk):
         """Configure results table styling"""
         style = ttk.Style()
         
-        # Configure treeview colors to match warm beige theme
+        # Configure treeview colors using theme
         style.configure("Treeview", 
-                        background="#F5EFE7",
-                        foreground="#3E2723",
-                        fieldbackground="#F5EFE7",
+                        background=theme_manager.get_color("table.background"),
+                        foreground=theme_manager.get_color("table.text"),
+                        fieldbackground=theme_manager.get_color("table.background"),
                         borderwidth=1,
                         font=("Consolas", 11),
                         rowheight=25)
         style.configure("Treeview.Heading",
-                        background="#E8DFD0",
-                        foreground="#3E2723",
+                        background=theme_manager.get_color("table.header"),
+                        foreground=theme_manager.get_color("table.text"),
                         borderwidth=1,
                         relief="raised",
                         font=("Consolas", 11, "bold"))
         style.map("Treeview",
-                  background=[('selected', '#9B8F5E')],
-                  foreground=[('selected', 'white')])
+                  background=[('selected', theme_manager.get_color("table.selected"))],
+                  foreground=[('selected', theme_manager.get_color("text.inverse"))])
         
-        # Configure scrollbars
+        # Configure scrollbars using theme
         style.configure("Vertical.TScrollbar", 
-                        background="#E8DFD0", 
-                        troughcolor="#F5EFE7", 
+                        background=theme_manager.get_color("scrollbar.thumb"), 
+                        troughcolor=theme_manager.get_color("scrollbar.track"), 
                         borderwidth=1,
-                        arrowcolor="#3E2723")
+                        arrowcolor=theme_manager.get_color("scrollbar.arrow"))
         style.configure("Horizontal.TScrollbar", 
-                        background="#E8DFD0", 
-                        troughcolor="#F5EFE7", 
+                        background=theme_manager.get_color("scrollbar.thumb"), 
+                        troughcolor=theme_manager.get_color("scrollbar.track"), 
                         borderwidth=1,
-                        arrowcolor="#3E2723")
+                        arrowcolor=theme_manager.get_color("scrollbar.arrow"))
     
     def on_results_cell_click(self, event):
         """Handle single click on results table cell"""
@@ -459,10 +628,10 @@ class NeuronDBApp(ctk.CTk):
         # Create context menu
         context_menu = tk.Menu(self, tearoff=0)
         context_menu.configure(
-            background="#F5EFE7",
-            foreground="#3E2723",
-            activebackground="#9B8F5E",
-            activeforeground="white",
+            background=theme_manager.get_color("background.main"),
+            foreground=theme_manager.get_color("text.primary"),
+            activebackground=theme_manager.get_color("buttons.primary_bg"),
+            activeforeground=theme_manager.get_color("buttons.primary_text"),
             font=("Segoe UI", 10)
         )
         
@@ -520,33 +689,33 @@ class NeuronDBApp(ctk.CTk):
         dialog = tk.Toplevel(self)
         dialog.title(f"Cell Value: {self.selected_cell_column}")
         dialog.geometry("600x400")
-        dialog.configure(bg="#F5EFE7")
+        dialog.configure(bg=theme_manager.get_color("background.main"))
         
         # Make it modal
         dialog.transient(self)
         dialog.grab_set()
         
         # Title label
-        title_frame = ctk.CTkFrame(dialog, fg_color="#9B8F5E")
+        title_frame = ctk.CTkFrame(dialog, fg_color=theme_manager.get_color("buttons.primary_bg"))
         title_frame.pack(fill="x", padx=0, pady=0)
         
         title_label = ctk.CTkLabel(
             title_frame,
             text=f"📊 Row {self.selected_cell_row + 1} • {self.selected_cell_column}",
             font=ctk.CTkFont(size=12, weight="bold"),
-            text_color="#FFFFFF"
+            text_color=theme_manager.get_color("buttons.primary_text")
         )
         title_label.pack(pady=8, padx=12)
         
         # Text widget to show value
-        text_frame = tk.Frame(dialog, bg="#F5EFE7")
+        text_frame = tk.Frame(dialog, bg=theme_manager.get_color("editor.background"))
         text_frame.pack(fill="both", expand=True, padx=12, pady=12)
         
         text_widget = tk.Text(
             text_frame,
             wrap="word",
-            bg="#F5EFE7",
-            fg="#3E2723",
+            bg=theme_manager.get_color("editor.background"),
+            fg=theme_manager.get_color("text.primary"),
             font=("Consolas", 11),
             padx=10,
             pady=10
@@ -572,8 +741,8 @@ class NeuronDBApp(ctk.CTk):
             command=lambda: [self.clipboard_clear(), 
                            self.clipboard_append(str(self.selected_cell_value)),
                            self.status_label.configure(text="✓ Copied to clipboard")],
-            fg_color="#9B8F5E",
-            hover_color="#87795A",
+            fg_color=theme_manager.get_color("button.background"),
+            hover_color=theme_manager.get_color("button.hoverBackground"),
             width=100
         )
         copy_btn.pack(side="left", padx=5)
@@ -582,8 +751,8 @@ class NeuronDBApp(ctk.CTk):
             button_frame,
             text="Close",
             command=dialog.destroy,
-            fg_color="#8B7355",
-            hover_color="#6B5E45",
+            fg_color=theme_manager.get_color("button.hoverBackground"),
+            hover_color=theme_manager.get_color("sideBarSectionHeader.background"),
             width=100
         )
         close_btn.pack(side="left", padx=5)
@@ -669,9 +838,9 @@ class NeuronDBApp(ctk.CTk):
             # Insert with row number in the tree column
             self.results_tree.insert("", "end", text=str(i + 1), values=values, tags=(tag,))
         
-        # Configure row tags for better readability
-        self.results_tree.tag_configure("odd", background="#F5EFE7")
-        self.results_tree.tag_configure("even", background="#EBE3D5")
+        # Configure row tags for better readability using theme colors
+        self.results_tree.tag_configure("odd", background=theme_manager.get_color("table.background"))
+        self.results_tree.tag_configure("even", background=theme_manager.get_color("background.secondary"))
         
         # Update results label
         self.results_label.configure(text=f"Results ({len(results)} rows)")
@@ -1043,6 +1212,11 @@ Built with Python, CustomTkinter, and LangChain.
             return results, columns
         except Exception as e:
             return None, str(e)
+    
+    def execute_query(self):
+        """Execute the current query in the query panel"""
+        if hasattr(self.query_panel, 'execute_query'):
+            self.query_panel.execute_query()
     
     def ai_generate_callback(self, user_input: str):
         """Callback for AI query generation"""

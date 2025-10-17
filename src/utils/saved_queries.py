@@ -59,10 +59,11 @@ def get_saved_queries_file() -> Path:
 class SavedQuery:
     """Represents a saved query"""
     
-    def __init__(self, title: str, query: str, query_id: str = None, created_at: str = None, updated_at: str = None):
+    def __init__(self, title: str, query: str, shortcut: str = None, query_id: str = None, created_at: str = None, updated_at: str = None):
         self.id = query_id or str(uuid.uuid4())
         self.title = title
         self.query = query
+        self.shortcut = shortcut  # New shortcut field
         self.created_at = created_at or datetime.now().isoformat()
         self.updated_at = updated_at or datetime.now().isoformat()
     
@@ -72,6 +73,7 @@ class SavedQuery:
             'id': self.id,
             'title': self.title,
             'query': self.query,
+            'shortcut': self.shortcut,
             'created_at': self.created_at,
             'updated_at': self.updated_at
         }
@@ -82,6 +84,7 @@ class SavedQuery:
         return cls(
             title=data['title'],
             query=data['query'],
+            shortcut=data.get('shortcut'),  # Handle existing queries without shortcuts
             query_id=data.get('id'),
             created_at=data.get('created_at'),
             updated_at=data.get('updated_at')
@@ -120,21 +123,40 @@ class SavedQueriesManager:
             print(f"Error saving queries: {e}")
             return False
     
-    def add_query(self, title: str, query: str) -> SavedQuery:
+    def add_query(self, title: str, query: str, shortcut: str = None) -> SavedQuery:
         """Add a new saved query"""
-        saved_query = SavedQuery(title=title, query=query)
+        # Validate shortcut if provided
+        if shortcut and not self.is_shortcut_valid(shortcut):
+            raise ValueError("Invalid shortcut format. Use only letters, numbers, and underscores.")
+        
+        if shortcut and self.get_query_by_shortcut(shortcut):
+            raise ValueError(f"Shortcut '{shortcut}' already exists.")
+        
+        saved_query = SavedQuery(title=title, query=query, shortcut=shortcut)
         self.queries.append(saved_query)
         self.save_queries()
         return saved_query
     
-    def update_query(self, query_id: str, title: str = None, query: str = None) -> bool:
+    def update_query(self, query_id: str, title: str = None, query: str = None, shortcut: str = None) -> bool:
         """Update an existing saved query"""
+        # Validate shortcut if provided
+        if shortcut is not None:
+            if shortcut and not self.is_shortcut_valid(shortcut):
+                raise ValueError("Invalid shortcut format. Use only letters, numbers, and underscores.")
+            
+            # Check if shortcut is already used by another query
+            existing_query = self.get_query_by_shortcut(shortcut)
+            if existing_query and existing_query.id != query_id:
+                raise ValueError(f"Shortcut '{shortcut}' already exists.")
+        
         for q in self.queries:
             if q.id == query_id:
                 if title is not None:
                     q.title = title
                 if query is not None:
                     q.query = query
+                if shortcut is not None:
+                    q.shortcut = shortcut
                 q.updated_at = datetime.now().isoformat()
                 self.save_queries()
                 return True
@@ -167,3 +189,42 @@ class SavedQueriesManager:
             q for q in self.queries
             if search_term in q.title.lower() or search_term in q.query.lower()
         ]
+    
+    def get_query_by_shortcut(self, shortcut: str) -> Optional[SavedQuery]:
+        """Get a saved query by its shortcut"""
+        if not shortcut:
+            return None
+        for q in self.queries:
+            if q.shortcut and q.shortcut.lower() == shortcut.lower():
+                return q
+        return None
+    
+    def get_all_shortcuts(self) -> Dict[str, str]:
+        """Get all shortcuts and their corresponding query titles"""
+        shortcuts = {}
+        for q in self.queries:
+            if q.shortcut:
+                shortcuts[q.shortcut] = q.title
+        return shortcuts
+    
+    def is_shortcut_valid(self, shortcut: str) -> bool:
+        """Validate shortcut format (letters, numbers, underscores only)"""
+        import re
+        if not shortcut:
+            return True  # Empty shortcut is valid (means no shortcut)
+        return bool(re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', shortcut))
+    
+    def substitute_query_shortcuts(self, text: str) -> str:
+        """Replace {{shortcut}} patterns with actual query text"""
+        import re
+        
+        def replace_shortcut(match):
+            shortcut = match.group(1)
+            query = self.get_query_by_shortcut(shortcut)
+            if query:
+                return query.query
+            else:
+                return match.group(0)  # Return original if shortcut not found
+        
+        # Replace {{shortcut}} patterns
+        return re.sub(r'\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}', replace_shortcut, text)
