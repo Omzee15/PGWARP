@@ -8,6 +8,12 @@ from tkinter import ttk, messagebox, scrolledtext
 import customtkinter as ctk
 from typing import Dict, List, Tuple, Optional
 import re
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.append(str(Path(__file__).parent.parent))
+from utils.theme_manager import theme_manager
 
 
 class Table:
@@ -107,21 +113,21 @@ class DiagramCanvas(tk.Canvas):
     """Canvas for drawing ER diagrams"""
     
     def __init__(self, parent, **kwargs):
-        super().__init__(parent, bg="#F5EFE7", highlightthickness=0, **kwargs)
+        super().__init__(parent, bg=theme_manager.get_color("diagram.canvas_bg"), highlightthickness=0, **kwargs)
         self.tables = {}
         self.relationships = []
         
-        # Colors - Following app's warm beige/olive theme
-        self.table_bg = "#FFFFFF"           # White background for table body
-        self.table_border = "#9B8F5E"       # Olive border
-        self.header_bg = "#9B8F5E"          # Olive header (primary color)
-        self.header_fg = "#FFFFFF"          # White text on olive
-        self.text_color = "#3E2723"         # Dark brown for regular text
-        self.pk_color = "#9B8F5E"           # Olive for primary keys
-        self.fk_color = "#8B7355"           # Medium brown for foreign keys
-        self.line_color = "#9B8F5E"         # Olive for relationship lines
-        self.null_indicator_color = "#C4756C"  # Red for nullable indicators
-        self.column_type_color = "#8B7355"  # Medium brown for data types
+        # Colors - Following app's theme
+        self.table_bg = theme_manager.get_color("diagram.table_bg")
+        self.table_border = theme_manager.get_color("diagram.table_border")
+        self.header_bg = theme_manager.get_color("diagram.header_bg")
+        self.header_fg = theme_manager.get_color("diagram.header_fg")
+        self.text_color = theme_manager.get_color("diagram.text")
+        self.pk_color = theme_manager.get_color("diagram.pk")
+        self.fk_color = theme_manager.get_color("diagram.fk")
+        self.line_color = theme_manager.get_color("diagram.line")
+        self.null_indicator_color = theme_manager.get_color("diagram.null_indicator")
+        self.column_type_color = theme_manager.get_color("diagram.column_type")
         
         # Zoom settings
         self.zoom_level = 1.0
@@ -230,7 +236,7 @@ class DiagramCanvas(tk.Canvas):
         self.create_rectangle(
             x + shadow_offset, y + shadow_offset, 
             x + width + shadow_offset, y + height + shadow_offset,
-            fill="#D9CDBF",
+            fill=theme_manager.get_color("diagram.minimap_bg"),
             outline="",
             tags=("table", f"table_{table.name}", "shadow")
         )
@@ -280,7 +286,7 @@ class DiagramCanvas(tk.Canvas):
                 self.create_rectangle(
                     x + 1, y_offset - 8 * self.zoom_level,
                     x + width - 1, y_offset + 16 * self.zoom_level,
-                    fill="#F9F6F2",
+                    fill=theme_manager.get_color("diagram.minimap_viewport"),
                     outline="",
                     tags=("table", f"table_{table.name}", "row_bg")
                 )
@@ -404,8 +410,8 @@ class DiagramCanvas(tk.Canvas):
         self.create_rectangle(
             text_x - box_width, text_y - box_height,
             text_x + box_width, text_y + box_height,
-            fill="#F5EFE7",
-            outline="#E8DFD0",
+            fill=theme_manager.get_color("diagram.canvas_bg"),
+            outline=theme_manager.get_color("diagram.minimap_outline"),
             tags="relationship"
         )
         
@@ -574,7 +580,7 @@ class DBDiagramView(ctk.CTkFrame):
     """Database Diagram View Component"""
     
     def __init__(self, parent):
-        super().__init__(parent, fg_color="#F5EFE7")
+        super().__init__(parent, fg_color=theme_manager.get_color("diagram.canvas_bg"))
         
         self.current_tables = {}
         self.current_relationships = []
@@ -594,12 +600,12 @@ class DBDiagramView(ctk.CTkFrame):
         container.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Left panel - DBML Editor
-        self.left_panel = ctk.CTkFrame(container, fg_color="#E8DFD0", width=self.left_panel_width, corner_radius=8)
+        self.left_panel = ctk.CTkFrame(container, fg_color=theme_manager.get_color("diagram.panel_bg"), width=self.left_panel_width, corner_radius=8)
         self.left_panel.place(x=0, y=0, relheight=1.0)
         self.left_panel.place_configure(width=self.left_panel_width)
         
         # Resizable separator
-        self.separator = ctk.CTkFrame(container, fg_color="#9B8F5E", cursor="sb_h_double_arrow")
+        self.separator = ctk.CTkFrame(container, fg_color=theme_manager.get_color("diagram.separator"), cursor="sb_h_double_arrow")
         self.separator.place(x=self.left_panel_width, y=0, relheight=1.0)
         self.separator.place_configure(width=6)
         
@@ -607,11 +613,11 @@ class DBDiagramView(ctk.CTkFrame):
         self.separator.bind("<Button-1>", self.start_resize)
         self.separator.bind("<B1-Motion>", self.do_resize)
         self.separator.bind("<ButtonRelease-1>", self.stop_resize)
-        self.separator.bind("<Enter>", lambda e: self.separator.configure(fg_color="#87795A"))
-        self.separator.bind("<Leave>", lambda e: self.separator.configure(fg_color="#9B8F5E"))
+        self.separator.bind("<Enter>", lambda e: self.separator.configure(fg_color=theme_manager.get_color("diagram.separator_hover")))
+        self.separator.bind("<Leave>", lambda e: self.separator.configure(fg_color=theme_manager.get_color("diagram.separator")))
         
         # Right panel - Diagram Canvas
-        self.right_panel = ctk.CTkFrame(container, fg_color="#E8DFD0", corner_radius=8)
+        self.right_panel = ctk.CTkFrame(container, fg_color=theme_manager.get_color("diagram.panel_bg"), corner_radius=8)
         self.right_panel.place(x=self.left_panel_width + 6, y=0, relwidth=1.0, relheight=1.0)
         
         # Configure right panel to adjust with left panel width

@@ -9,7 +9,14 @@ import subprocess
 import threading
 import queue
 import os
+import sys
+from pathlib import Path
 from typing import Optional
+
+# Add parent directory to path for imports
+sys.path.append(str(Path(__file__).parent.parent))
+from utils.config_manager import config_manager
+from utils.theme_manager import theme_manager
 
 class PSQLTerminal(ctk.CTkFrame):
     """Interactive PSQL terminal interface"""
@@ -88,18 +95,18 @@ class PSQLTerminal(ctk.CTkFrame):
         # Terminal text widget
         self.terminal_text = tk.Text(
             terminal_frame,
-            font=("Consolas", 12),
-            bg="#F5EFE7",
-            fg="#3E2723",
-            insertbackground="#9B8F5E",
-            selectbackground="#9B8F5E",
+            font=(config_manager.config.terminal_font_family, config_manager.config.terminal_font_size),
+            bg=theme_manager.get_color("terminal.background"),
+            fg=theme_manager.get_color("terminal.foreground"),
+            insertbackground=theme_manager.get_color("terminal.cursor"),
+            selectbackground=theme_manager.get_color("terminal.selection"),
             selectforeground="white",
             wrap=tk.WORD,
             state=tk.DISABLED,
             relief=tk.SOLID,
             borderwidth=1,
             highlightthickness=1,
-            highlightcolor="#9B8F5E",
+            highlightcolor=theme_manager.get_color("terminal.highlight"),
             padx=10,
             pady=5
         )
@@ -111,10 +118,10 @@ class PSQLTerminal(ctk.CTkFrame):
         # Configure scrollbar style
         style = ttk.Style()
         style.configure("Terminal.Vertical.TScrollbar", 
-                        background="#E8DFD0", 
-                        troughcolor="#F5EFE7", 
+                        background=theme_manager.get_color("terminal.scrollbar_bg"), 
+                        troughcolor=theme_manager.get_color("terminal.scrollbar_trough"), 
                         borderwidth=1,
-                        arrowcolor="#9B8F5E")
+                        arrowcolor=theme_manager.get_color("terminal.scrollbar_arrow"))
         terminal_scroll.configure(style="Terminal.Vertical.TScrollbar")
         
         # Pack terminal and scrollbar
@@ -130,7 +137,7 @@ class PSQLTerminal(ctk.CTkFrame):
         self.prompt_label = ctk.CTkLabel(
             input_frame, 
             text="psql>", 
-            font=ctk.CTkFont(family="Consolas", size=12),
+            font=ctk.CTkFont(family=config_manager.config.terminal_font_family, size=config_manager.config.terminal_font_size),
             width=60
         )
         self.prompt_label.grid(row=0, column=0, padx=(15, 8), pady=12)
@@ -138,7 +145,7 @@ class PSQLTerminal(ctk.CTkFrame):
         # Command input
         self.command_entry = ctk.CTkEntry(
             input_frame, 
-            font=ctk.CTkFont(family="Consolas", size=12),
+            font=ctk.CTkFont(family=config_manager.config.terminal_font_family, size=config_manager.config.terminal_font_size),
             height=32,
             state="disabled",
             corner_radius=6
@@ -184,7 +191,7 @@ class PSQLTerminal(ctk.CTkFrame):
     def connect_psql(self):
         """Connect to PSQL process"""
         if not self.connection or not self.connection.is_connected():
-            self.write_to_terminal("Error: No database connection available.\n", color="#CD853F")
+            self.write_to_terminal("Error: No database connection available.\n", color=theme_manager.get_color("terminal.error"))
             return
         
         if self.process and self.process.poll() is None:
@@ -207,7 +214,7 @@ class PSQLTerminal(ctk.CTkFrame):
                 )
                 
                 if not password:
-                    self.write_to_terminal("Connection cancelled: Password required.\n", color="#CD853F")
+                    self.write_to_terminal("Connection cancelled: Password required.\n", color=theme_manager.get_color("terminal.error"))
                     return
             
             # Construct psql command
@@ -249,9 +256,9 @@ class PSQLTerminal(ctk.CTkFrame):
             self.command_entry.focus()
             
         except FileNotFoundError:
-            self.write_to_terminal("Error: 'psql' command not found. Please ensure PostgreSQL client is installed and in PATH.\n", color="#CD853F")
+            self.write_to_terminal("Error: 'psql' command not found. Please ensure PostgreSQL client is installed and in PATH.\n", color=theme_manager.get_color("terminal.error"))
         except Exception as e:
-            self.write_to_terminal(f"Error connecting to PSQL: {e}\n", color="#CD853F")
+            self.write_to_terminal(f"Error connecting to PSQL: {e}\n", color=theme_manager.get_color("terminal.error"))
     
     def disconnect_psql(self):
         """Disconnect from PSQL process"""
@@ -327,7 +334,7 @@ class PSQLTerminal(ctk.CTkFrame):
     def execute_command(self, event=None):
         """Execute a command in PSQL"""
         if not self.process or self.process.poll() is not None:
-            self.write_to_terminal("Error: PSQL is not running.\n", color="#CD853F")
+            self.write_to_terminal("Error: PSQL is not running.\n", color=theme_manager.get_color("terminal.error"))
             return
         
         command = self.command_entry.get().strip()
@@ -345,7 +352,7 @@ class PSQLTerminal(ctk.CTkFrame):
             self.history_index = len(self.command_history)
             
             # Display command in terminal
-            self.write_to_terminal(f"psql> {command}\n", color="#8B7355")  # Brown for commands
+            self.write_to_terminal(f"psql> {command}\n", color=theme_manager.get_color("terminal.command"))  # Brown for commands
             
             # Send command to PSQL
             self.process.stdin.write(command + "\n")
@@ -355,7 +362,7 @@ class PSQLTerminal(ctk.CTkFrame):
             self.command_entry.delete(0, tk.END)
             
         except Exception as e:
-            self.write_to_terminal(f"Error executing command: {e}\n", color="#CD853F")
+            self.write_to_terminal(f"Error executing command: {e}\n", color=theme_manager.get_color("terminal.error"))
     
     def history_up(self, event):
         """Navigate up in command history"""

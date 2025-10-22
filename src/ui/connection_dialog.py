@@ -12,6 +12,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 from utils.theme_manager import theme_manager
+from utils.config_manager import config_manager
 
 class ConnectionDialog(ctk.CTkToplevel):
     """Dialog for creating and managing database connections"""
@@ -182,24 +183,24 @@ class ConnectionDialog(ctk.CTkToplevel):
         
         # Host
         ctk.CTkLabel(form_frame, text="Host:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=15, pady=(0, 5))
-        self.host_entry = ctk.CTkEntry(form_frame, placeholder_text="localhost", height=32, font=ctk.CTkFont(size=12), corner_radius=6)
+        self.host_entry = ctk.CTkEntry(form_frame, placeholder_text=config_manager.config.default_host, height=32, font=ctk.CTkFont(size=12), corner_radius=6)
         self.host_entry.pack(fill="x", padx=15, pady=(0, 15))
-        self.host_entry.insert(0, "localhost")  # Default value
+        self.host_entry.insert(0, config_manager.config.default_host)  # Default value from config
         
         # Port
         ctk.CTkLabel(form_frame, text="Port:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=15, pady=(0, 5))
-        self.port_entry = ctk.CTkEntry(form_frame, placeholder_text="5432", height=32, font=ctk.CTkFont(size=12), corner_radius=6)
+        self.port_entry = ctk.CTkEntry(form_frame, placeholder_text=str(config_manager.config.default_port), height=32, font=ctk.CTkFont(size=12), corner_radius=6)
         self.port_entry.pack(fill="x", padx=15, pady=(0, 15))
-        self.port_entry.insert(0, "5432")  # Default value
+        self.port_entry.insert(0, str(config_manager.config.default_port))  # Default value from config
         
         # Database
         ctk.CTkLabel(form_frame, text="Database:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=15, pady=(0, 5))
         db_note = ctk.CTkLabel(form_frame, text="(Initial database to connect to - usually 'postgres')", 
                               font=ctk.CTkFont(size=10), text_color=theme_manager.get_color("text.secondary"))
         db_note.pack(anchor="w", padx=15)
-        self.database_entry = ctk.CTkEntry(form_frame, placeholder_text="postgres", height=32, font=ctk.CTkFont(size=12), corner_radius=6)
+        self.database_entry = ctk.CTkEntry(form_frame, placeholder_text=config_manager.config.default_database, height=32, font=ctk.CTkFont(size=12), corner_radius=6)
         self.database_entry.pack(fill="x", padx=15, pady=(5, 15))
-        self.database_entry.insert(0, "postgres")  # Default value
+        self.database_entry.insert(0, config_manager.config.default_database)  # Default value from config
         
         # Username
         ctk.CTkLabel(form_frame, text="Username:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=15, pady=(0, 5))

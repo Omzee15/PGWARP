@@ -17,13 +17,16 @@ class ThemeManager:
         self.theme_name: str = ""
         self.available_themes: Dict[str, Dict] = {}
         
-        # Look for themes directory at project root level
-        self.themes_dir = Path(__file__).parent.parent.parent / "themes"
+        # Look for themes directory at src/themes level
+        self.themes_dir = Path(__file__).parent.parent / "themes"
         self.themes_dir.mkdir(exist_ok=True)
         
         # Load available themes and set default
         self.load_available_themes()
-        self.initialize_with_fallback("default")
+        # Try to load from config first, fallback to projectnest-default
+        from utils.config_manager import config_manager
+        selected_theme = getattr(config_manager.config, 'selected_theme', 'projectnest-default')
+        self.initialize_with_fallback(selected_theme)
     
     def load_available_themes(self):
         """Load all available theme files"""
@@ -77,36 +80,207 @@ class ThemeManager:
     
     def get_color(self, color_path: str, fallback: str = "#000000") -> str:
         """
-        Get a color from the current theme using dot notation
+        Get color from current theme using simple color paths.
         
         Args:
-            color_path: Color path like 'primary.main', 'text.primary'
-            fallback: Default color if path not found
+            color_path: Simple color path (e.g., "background", "primary", "foreground")
+            fallback: Fallback color if not found
             
         Returns:
-            Color hex code as string
+            Color string (hex, hsl, or css color)
         """
         if not self.current_theme:
             return self._get_fallback_color(color_path, fallback)
         
         colors = self.current_theme.get('colors', {})
         
-        # Try dot notation for nested colors
-        try:
-            keys = color_path.split('.')
-            value = colors
+        # Try direct color lookup first
+        if color_path in colors:
+            color = colors[color_path]
+            return self._normalize_color(color)
+        
+        # Try mapping common paths to new format
+        color_mapping = {
+            # Background colors
+            "background.main": "background",
+            "background.secondary": "card",
             
-            for key in keys:
-                if isinstance(value, dict) and key in value:
-                    value = value[key]
-                else:
-                    return self._get_fallback_color(color_path, fallback)
+            # Text colors
+            "text.primary": "foreground", 
+            "text.secondary": "mutedForeground",
             
-            return value if isinstance(value, str) else fallback
+            # Button colors
+            "buttons.primary_bg": "primary",
+            "buttons.primary_text": "primaryForeground", 
+            "buttons.primary_hover": "primaryHover",
+            "buttons.secondary_bg": "secondary",
+            "buttons.secondary_text": "secondaryForeground",
+            "buttons.secondary_hover": "secondaryHover",
+            "buttons.danger_bg": "destructive",
+            "buttons.danger_text": "destructiveForeground",
+            "buttons.danger_hover": "destructive",
             
-        except Exception as e:
-            print(f"Error getting color {color_path}: {e}")
-            return self._get_fallback_color(color_path, fallback)
+            # Accent colors
+            "accent.main": "primary",
+            "accent.primary": "primary",
+            
+            # Editor colors
+            "editor.background": "background",
+            
+            # Sidebar colors  
+            "sidebar.background": "sidebarBackground",
+            "sidebar.header": "card",
+            "sidebar.text": "sidebarForeground",
+            
+            # Table colors (legacy support)
+            "table.background": "background",
+            "table.text": "foreground", 
+            "table.header": "card",
+            "table.selected": "primary",
+            
+            # Scrollbar colors (legacy support)
+            "scrollbar.thumb": "muted",
+            "scrollbar.track": "background",
+            
+            # Schema browser specific colors
+            "schema.title_bg": "primary",
+            "schema.title_text": "primaryForeground",
+            "schema.button_bg": "secondary",
+            "schema.button_hover": "secondaryHover",
+            "schema.button_text": "secondaryForeground",
+            "schema.delete_bg": "destructive",
+            "schema.delete_hover": "destructive",
+            "schema.export_bg": "muted",
+            "schema.export_hover": "accent",
+            "schema.export_text": "foreground",
+            "schema.table_frame": "card",
+            "schema.table_odd": "cardHover",
+            "schema.empty_text": "mutedForeground",
+            
+            # Terminal specific colors
+            "terminal.background": "card",
+            "terminal.foreground": "foreground",
+            "terminal.cursor": "accent",
+            "terminal.selection": "accent",
+            "terminal.highlight": "accent",
+            "terminal.scrollbar_bg": "cardHover",
+            "terminal.scrollbar_trough": "card",
+            "terminal.scrollbar_arrow": "accent",
+            "terminal.error": "destructive",
+            "terminal.command": "mutedForeground",
+            
+            # Diagram specific colors
+            "diagram.canvas_bg": "card",
+            "diagram.table_bg": "background",
+            "diagram.table_border": "primary",
+            "diagram.header_bg": "primary",
+            "diagram.header_fg": "primaryForeground",
+            "diagram.text": "foreground",
+            "diagram.pk": "primary",
+            "diagram.fk": "secondary",
+            "diagram.line": "primary",
+            "diagram.null_indicator": "destructive",
+            "diagram.column_type": "mutedForeground",
+            "diagram.minimap_bg": "cardHover",
+            "diagram.minimap_viewport": "accent",
+            "diagram.minimap_outline": "border",
+            "diagram.panel_bg": "card",
+            "diagram.separator": "primary",
+            "diagram.separator_hover": "primaryHover",
+            "scrollbar.arrow": "foreground",
+            
+            # Additional mappings for better coverage
+            "statusbar.background": "card",
+            "statusbar.foreground": "foreground",
+            "results.background": "background",
+            "results.foreground": "foreground",
+            "results.header": "card",
+        }
+        
+        # Try mapped lookup
+        if color_path in color_mapping:
+            mapped_color = color_mapping[color_path]
+            if mapped_color in colors:
+                color = colors[mapped_color]
+                return self._normalize_color(color)
+        
+        # Return fallback
+        return self._get_fallback_color(color_path, fallback)
+    
+    def _normalize_color(self, color: str) -> str:
+        """Normalize different color formats to usable CSS color"""
+        if not color:
+            return "#000000"
+        
+        color = color.strip()
+        
+        # If it's already a hex color, return as is
+        if color.startswith("#"):
+            return color
+        
+        # If it's an HSL value without hsl(), add it
+        if not color.startswith("hsl(") and not color.startswith("rgb("):
+            # Try to parse as HSL values (e.g., "222.2 84% 4.9%")
+            if "%" in color:
+                try:
+                    parts = color.split()
+                    if len(parts) == 3:
+                        return f"hsl({parts[0]}, {parts[1]}, {parts[2]})"
+                except:
+                    pass
+        
+        return color
+    
+    def _get_fallback_color(self, color_path: str, fallback: str = "#000000") -> str:
+        """Get fallback colors when theme is not available or color not found"""
+        fallback_colors = {
+            # Background colors
+            "background": "#F5EFE7",
+            "background.main": "#F5EFE7",
+            "background.secondary": "#E8DFD0",
+            "card": "#E8DFD0", 
+            
+            # Text colors
+            "foreground": "#3E2723",
+            "text.primary": "#3E2723",
+            "text.secondary": "#8B7355",
+            "mutedForeground": "#8B7355",
+            
+            # Button colors
+            "primary": "#9B8F5E",
+            "primaryForeground": "#FFFFFF",
+            "buttons.primary_bg": "#9B8F5E",
+            "buttons.primary_text": "#FFFFFF",
+            "buttons.primary_hover": "#87795A",
+            "secondary": "#E8DFD0",
+            "secondaryForeground": "#3E2723", 
+            "buttons.secondary_bg": "#E8DFD0",
+            "buttons.secondary_text": "#3E2723",
+            "buttons.secondary_hover": "#D9CDBF",
+            "destructive": "#C4756C",
+            "destructiveForeground": "#FFFFFF",
+            "buttons.danger_bg": "#C4756C",
+            "buttons.danger_text": "#FFFFFF",
+            "buttons.danger_hover": "#A85E56",
+            
+            # Accent colors
+            "accent": "#9B8F5E",
+            "accent.main": "#9B8F5E", 
+            "accent.primary": "#9B8F5E",
+            
+            # Editor colors
+            "editor.background": "#F5EFE7",
+            
+            # Borders
+            "border": "#D9CDBF",
+            "input": "#E8DFD0",
+            
+            # Sidebar colors
+            "sidebar.background": "#E8DFD0",
+            "sidebar.header": "#D9CDBF",
+        }
+        
+        return fallback_colors.get(color_path, fallback)
     
     def _get_fallback_color(self, color_path: str, fallback: str = "#000000") -> str:
         """Get fallback colors when theme is not available or color not found"""

@@ -14,6 +14,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from utils.saved_queries import SavedQueriesManager
 from utils.saved_variables import SavedVariablesManager
 from utils.theme_manager import theme_manager
+from utils.config_manager import config_manager
 
 
 class QueryTooltip:
@@ -113,7 +114,7 @@ class SchemaBrowser(ctk.CTkFrame):
             header_content,
             text="🗄️ Database",
             font=ctk.CTkFont(size=14, weight="bold"),
-            text_color="#FFFFFF"
+            text_color=theme_manager.get_color("schema.title_text")
         )
         title_label.pack(side="left")
         
@@ -128,8 +129,8 @@ class SchemaBrowser(ctk.CTkFrame):
             width=100,
             height=28,
             font=ctk.CTkFont(size=12, weight="bold"),
-            fg_color="#87795A",
-            hover_color="#6B5E45",
+            fg_color=theme_manager.get_color("schema.button_bg"),
+            hover_color=theme_manager.get_color("schema.button_hover"),
             corner_radius=6
         )
         self.connect_btn.pack(side="left", padx=2)
@@ -141,8 +142,8 @@ class SchemaBrowser(ctk.CTkFrame):
             width=100,
             height=28,
             font=ctk.CTkFont(size=12, weight="bold"),
-            fg_color="#C4756C",
-            hover_color="#A85E56",
+            fg_color=theme_manager.get_color("schema.delete_bg"),
+            hover_color=theme_manager.get_color("schema.delete_hover"),
             corner_radius=6
         )
         # Initially hide disconnect button
@@ -156,7 +157,7 @@ class SchemaBrowser(ctk.CTkFrame):
             connection_info_frame,
             text="Not connected",
             font=ctk.CTkFont(size=9),
-            text_color="#8B7355",
+            text_color=theme_manager.get_color("schema.empty_text"),
             wraplength=280,
             anchor="center"
         )
@@ -172,8 +173,8 @@ class SchemaBrowser(ctk.CTkFrame):
             text="▼ Schema Browser",
             command=self.toggle_schema_section,
             fg_color="transparent",
-            hover_color="#C9BDB0",
-            text_color="#3E2723",
+            hover_color=theme_manager.get_color("schema.button_hover"),
+            text_color=theme_manager.get_color("text.primary"),
             font=ctk.CTkFont(size=13, weight="bold"),
             anchor="w",
             height=32
@@ -215,7 +216,7 @@ class SchemaBrowser(ctk.CTkFrame):
             text="No database connected",
             font=ctk.CTkFont(size=11),
             wraplength=280,
-            text_color="#3E2723"
+            text_color=theme_manager.get_color("text.primary")
         )
         self.info_label.pack(pady=8)
         
@@ -235,8 +236,8 @@ class SchemaBrowser(ctk.CTkFrame):
             text="▼ Saved Queries",
             command=self.toggle_queries_section,
             fg_color="transparent",
-            hover_color="#C9BDB0",
-            text_color="#3E2723",
+            hover_color=theme_manager.get_color("schema.button_hover"),
+            text_color=theme_manager.get_color("text.primary"),
             font=ctk.CTkFont(size=13, weight="bold"),
             anchor="w",
             height=32
@@ -251,8 +252,8 @@ class SchemaBrowser(ctk.CTkFrame):
             width=30,
             height=28,
             command=self.show_add_query_dialog,
-            fg_color="#9B8F5E",
-            hover_color="#87795A",
+            fg_color=theme_manager.get_color("schema.export_bg"),
+            hover_color=theme_manager.get_color("schema.export_hover"),
             font=ctk.CTkFont(size=14),
             corner_radius=6
         )
@@ -278,8 +279,8 @@ class SchemaBrowser(ctk.CTkFrame):
             text="▼ Variables",
             command=self.toggle_variables_section,
             fg_color="transparent",
-            hover_color="#C9BDB0",
-            text_color="#3E2723",
+            hover_color=theme_manager.get_color("schema.button_hover"),
+            text_color=theme_manager.get_color("text.primary"),
             font=ctk.CTkFont(size=13, weight="bold"),
             anchor="w",
             height=32
@@ -294,8 +295,8 @@ class SchemaBrowser(ctk.CTkFrame):
             width=30,
             height=28,
             command=self.show_add_variable_dialog,
-            fg_color="#9B8F5E",
-            hover_color="#87795A",
+            fg_color=theme_manager.get_color("schema.export_bg"),
+            hover_color=theme_manager.get_color("schema.export_hover"),
             font=ctk.CTkFont(size=14),
             corner_radius=6
         )
@@ -311,7 +312,7 @@ class SchemaBrowser(ctk.CTkFrame):
     def create_saved_queries_section(self):
         """Create the saved queries section below the schema browser"""
         # Saved queries table frame (removed duplicate header and button)
-        queries_table_frame = ctk.CTkFrame(self.queries_content_frame, fg_color="#E8DFD0", corner_radius=8)
+        queries_table_frame = ctk.CTkFrame(self.queries_content_frame, fg_color=theme_manager.get_color("schema.table_frame"), corner_radius=8)
         queries_table_frame.pack(fill="both", expand=False, padx=12, pady=(0, 12))
         queries_table_frame.configure(height=200)  # Fixed height for saved queries section
         
@@ -359,7 +360,7 @@ class SchemaBrowser(ctk.CTkFrame):
     def create_saved_variables_section(self):
         """Create the saved variables section"""
         # Variables table frame
-        variables_table_frame = ctk.CTkFrame(self.variables_content_frame, fg_color="#E8DFD0", corner_radius=8)
+        variables_table_frame = ctk.CTkFrame(self.variables_content_frame, fg_color=theme_manager.get_color("schema.table_frame"), corner_radius=8)
         variables_table_frame.pack(fill="both", expand=False, padx=12, pady=(0, 12))
         variables_table_frame.configure(height=180)  # Fixed height for saved variables section
         
@@ -410,32 +411,32 @@ class SchemaBrowser(ctk.CTkFrame):
         # Configure treeview colors to match current theme
         style.theme_use("clam")
         style.configure("Treeview", 
-                        background=theme_manager.get_color("background.main"),
-                        foreground=theme_manager.get_color("text.primary"),
-                        fieldbackground=theme_manager.get_color("background.main"),
+                        background=theme_manager.get_color("background"),
+                        foreground=theme_manager.get_color("foreground"),
+                        fieldbackground=theme_manager.get_color("background"),
                         borderwidth=1,
                         font=("Segoe UI", 10),
                         rowheight=22)
         style.configure("Treeview.Heading",
-                        background=theme_manager.get_color("background.secondary"),
-                        foreground=theme_manager.get_color("text.primary"),
+                        background=theme_manager.get_color("card"),
+                        foreground=theme_manager.get_color("foreground"),
                         borderwidth=1,
                         font=("Segoe UI", 10, "bold"))
         style.map("Treeview",
-                  background=[('selected', theme_manager.get_color("accent.main"))],
-                  foreground=[('selected', theme_manager.get_color("buttons.primary_text"))])
+                  background=[('selected', theme_manager.get_color("primary"))],
+                  foreground=[('selected', theme_manager.get_color("primaryForeground"))])
         
         # Configure scrollbars
         style.configure("Vertical.TScrollbar", 
-                        background=theme_manager.get_color("background.secondary"), 
-                        troughcolor=theme_manager.get_color("background.main"), 
+                        background=theme_manager.get_color("card"), 
+                        troughcolor=theme_manager.get_color("background"), 
                         borderwidth=1,
-                        arrowcolor=theme_manager.get_color("text.primary"))
+                        arrowcolor=theme_manager.get_color("foreground"))
         style.configure("Horizontal.TScrollbar", 
-                        background=theme_manager.get_color("background.secondary"), 
-                        troughcolor=theme_manager.get_color("background.main"), 
+                        background=theme_manager.get_color("card"), 
+                        troughcolor=theme_manager.get_color("background"), 
                         borderwidth=1,
-                        arrowcolor=theme_manager.get_color("text.primary"))
+                        arrowcolor=theme_manager.get_color("foreground"))
     
     def toggle_schema_section(self):
         """Toggle the schema browser section visibility"""
@@ -560,7 +561,7 @@ class SchemaBrowser(ctk.CTkFrame):
         if not queries:
             # Show empty state message
             self.queries_tree.insert("", "end", values=("No saved queries yet - Click ➕ to add", "", "", ""), tags=("empty",))
-            self.queries_tree.tag_configure("empty", foreground="#8B7355", font=("Segoe UI", 10, "italic"))
+            self.queries_tree.tag_configure("empty", foreground=theme_manager.get_color("schema.empty_text"), font=("Segoe UI", 10, "italic"))
         else:
             # Add each saved query as a row with alternating colors
             for i, query in enumerate(queries):
@@ -575,8 +576,8 @@ class SchemaBrowser(ctk.CTkFrame):
                                                    tags=(tag, query.id))
             
             # Configure row tags for alternating colors (matching results table)
-            self.queries_tree.tag_configure("odd", background="#F5EFE7")
-            self.queries_tree.tag_configure("even", background="#EBE3D5")
+            self.queries_tree.tag_configure("odd", background=theme_manager.get_color("schema.table_odd"))
+            self.queries_tree.tag_configure("even", background=theme_manager.get_color("background.main"))
     
     def on_query_tree_click(self, event):
         """Handle single click on queries tree"""
@@ -950,7 +951,7 @@ class SchemaBrowser(ctk.CTkFrame):
     
     def generate_select_query(self, table_name: str):
         """Generate a SELECT query for the table"""
-        query = f"SELECT * FROM {table_name} LIMIT 100;"
+        query = f"SELECT * FROM {table_name} LIMIT {config_manager.config.max_result_rows};"
         if self.on_table_select:
             # This is a bit of a hack - we're using the table select callback
             # to insert the query. In a real implementation, you'd have a proper
@@ -977,7 +978,7 @@ ORDER BY ordinal_position;
     
     def generate_filter_query(self, table_name: str, column_name: str):
         """Generate a filtered SELECT query"""
-        query = f"SELECT * FROM {table_name} WHERE {column_name} = ? LIMIT 100;"
+        query = f"SELECT * FROM {table_name} WHERE {column_name} = ? LIMIT {config_manager.config.max_result_rows};"
         if hasattr(self.master.master, 'query_panel'):
             self.master.master.query_panel.set_query(query)
     
@@ -990,8 +991,10 @@ ORDER BY ordinal_position;
         if hasattr(self.master.master, 'update_status'):
             self.master.master.update_status(f"Copied '{text}' to clipboard")
     
-    def show_table_rows(self, table_name: str, limit: int = 100):
+    def show_table_rows(self, table_name: str, limit: int = None):
         """Show first N rows from a table"""
+        if limit is None:
+            limit = config_manager.config.max_result_rows
         query = f"SELECT * FROM {table_name} LIMIT {limit};"
         if hasattr(self.master.master, 'query_panel'):
             self.master.master.query_panel.set_query(query)

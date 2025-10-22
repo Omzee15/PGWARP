@@ -132,7 +132,7 @@ class NeuronDBApp(ctk.CTk):
         
         # Initialize theme system with user's preferred theme
         print(f"Available themes: {theme_manager.list_available_themes()}")
-        preferred_theme = config_manager.get('default_theme', 'default')
+        preferred_theme = config_manager.config.selected_theme
         theme_manager.initialize_with_fallback(preferred_theme)
         print(f"Current theme: {theme_manager.get_theme_name()}")
         
@@ -202,7 +202,7 @@ class NeuronDBApp(ctk.CTk):
             )
         
         if hasattr(self, 'status_frame'):
-            self.status_frame.configure(fg_color=theme_manager.get_color("background.secondary"))
+            self.status_frame.configure(fg_color=theme_manager.get_color("card"))
         
         # Update schema browser theme
         if hasattr(self, 'schema_browser'):
@@ -229,7 +229,7 @@ class NeuronDBApp(ctk.CTk):
                 print(f"Successfully loaded theme: {theme_name}")
                 
                 # Save theme preference to config
-                config_manager.set('default_theme', theme_name)
+                config_manager.config.selected_theme = theme_name
                 config_manager.save_config()
                 
                 # Apply theme to all components
@@ -420,7 +420,7 @@ class NeuronDBApp(ctk.CTk):
         self.results_frame.grid_rowconfigure(1, weight=1)
         
         # Results header
-        results_header = ctk.CTkFrame(self.results_frame, height=45, fg_color=theme_manager.get_color("sidebar.background"), corner_radius=8)
+        results_header = ctk.CTkFrame(self.results_frame, height=45, fg_color=theme_manager.get_color("card"), corner_radius=8)
         results_header.grid(row=0, column=0, sticky="ew", padx=0, pady=0)
         results_header.grid_columnconfigure(0, weight=1)
         
@@ -428,7 +428,7 @@ class NeuronDBApp(ctk.CTk):
             results_header, 
             text="Query results will appear here", 
             font=ctk.CTkFont(size=15, weight="bold"),
-            text_color=theme_manager.get_color("sidebar.text")
+            text_color=theme_manager.get_color("foreground")
         )
         self.results_label.grid(row=0, column=0, sticky="w", padx=15, pady=8)
         
@@ -492,10 +492,14 @@ class NeuronDBApp(ctk.CTk):
         self.results_tree.bind("<Double-1>", self.on_results_cell_double_click)
         self.results_tree.bind("<Button-3>", self.on_results_right_click)
         
+        # Bind click on empty area to close popover
+        self.results_tree.bind("<Button-1>", self.on_results_area_click, add=True)
+        
         # Cell selection state
         self.selected_cell_row = None
         self.selected_cell_column = None
         self.selected_cell_value = None
+        self.cell_popover = None  # For tracking the popover window
         
         # Configure results styling
         self.configure_results_style()
@@ -506,7 +510,7 @@ class NeuronDBApp(ctk.CTk):
     
     def create_status_bar(self):
         """Create the status bar"""
-        self.status_frame = ctk.CTkFrame(self, height=30, fg_color=theme_manager.get_color("statusBar.background"))
+        self.status_frame = ctk.CTkFrame(self, height=30, fg_color=theme_manager.get_color("card"))
         self.status_frame.grid(row=1, column=0, sticky="ew", padx=5, pady=(0, 5))
         self.status_frame.grid_columnconfigure(0, weight=1)
         
@@ -514,7 +518,7 @@ class NeuronDBApp(ctk.CTk):
             self.status_frame, 
             text="Ready", 
             font=ctk.CTkFont(size=11),
-            text_color="#3E2723"
+            text_color=theme_manager.get_color("foreground")
         )
         self.status_label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
     
@@ -524,34 +528,41 @@ class NeuronDBApp(ctk.CTk):
         
         # Configure treeview colors using theme
         style.configure("Treeview", 
-                        background=theme_manager.get_color("table.background"),
-                        foreground=theme_manager.get_color("table.text"),
-                        fieldbackground=theme_manager.get_color("table.background"),
+                        background=theme_manager.get_color("background"),
+                        foreground=theme_manager.get_color("foreground"),
+                        fieldbackground=theme_manager.get_color("background"),
                         borderwidth=1,
                         font=("Consolas", 11),
                         rowheight=25)
         style.configure("Treeview.Heading",
-                        background=theme_manager.get_color("table.header"),
-                        foreground=theme_manager.get_color("table.text"),
+                        background=theme_manager.get_color("card"),
+                        foreground=theme_manager.get_color("foreground"),
                         borderwidth=1,
                         relief="raised",
                         font=("Consolas", 11, "bold"))
         style.map("Treeview",
-                  background=[('selected', theme_manager.get_color("table.selected"))],
-                  foreground=[('selected', theme_manager.get_color("text.inverse"))])
+                  background=[('selected', theme_manager.get_color("primary"))],
+                  foreground=[('selected', theme_manager.get_color("primaryForeground"))])
         
         # Configure scrollbars using theme
         style.configure("Vertical.TScrollbar", 
-                        background=theme_manager.get_color("scrollbar.thumb"), 
-                        troughcolor=theme_manager.get_color("scrollbar.track"), 
+                        background=theme_manager.get_color("card"), 
+                        troughcolor=theme_manager.get_color("background"), 
                         borderwidth=1,
-                        arrowcolor=theme_manager.get_color("scrollbar.arrow"))
+                        arrowcolor=theme_manager.get_color("foreground"))
         style.configure("Horizontal.TScrollbar", 
-                        background=theme_manager.get_color("scrollbar.thumb"), 
-                        troughcolor=theme_manager.get_color("scrollbar.track"), 
+                        background=theme_manager.get_color("card"), 
+                        troughcolor=theme_manager.get_color("background"), 
                         borderwidth=1,
-                        arrowcolor=theme_manager.get_color("scrollbar.arrow"))
+                        arrowcolor=theme_manager.get_color("foreground"))
     
+    def on_results_area_click(self, event):
+        """Handle clicks on results area (to close popover when clicking outside cells)"""
+        region = self.results_tree.identify_region(event.x, event.y)
+        if region not in ["cell"]:
+            # Clicked on empty area, close popover
+            self.close_cell_popover()
+
     def on_results_cell_click(self, event):
         """Handle single click on results table cell"""
         # Identify which cell was clicked
@@ -593,7 +604,7 @@ class NeuronDBApp(ctk.CTk):
             self.selected_cell_column = column_name
             self.selected_cell_value = cell_value
             
-            # Update status bar to show selected cell info
+            # Update status bar to show selected cell info (single click just selects)
             value_preview = str(cell_value)
             if len(value_preview) > 50:
                 value_preview = value_preview[:47] + "..."
@@ -601,21 +612,59 @@ class NeuronDBApp(ctk.CTk):
             self.status_label.configure(
                 text=f"Selected: Row {row_index + 1}, {column_name} = {value_preview}"
             )
+            
+            # Close any existing popover
+            self.close_cell_popover()
     
+    def on_results_cell_click_select_only(self, event):
+        """Handle cell click for selection only (used by double-click)"""
+        # Identify which cell was clicked
+        region = self.results_tree.identify_region(event.x, event.y)
+        
+        if region == "cell":
+            # Get the row
+            row_id = self.results_tree.identify_row(event.y)
+            if not row_id:
+                return
+            
+            # Get the column
+            column_id = self.results_tree.identify_column(event.x)
+            if not column_id:
+                return
+            
+            # Convert column_id to column name
+            if column_id == "#0":
+                # Clicked on row number column
+                return
+            
+            # Get column index (columns are #1, #2, etc.)
+            col_index = int(column_id.replace("#", "")) - 1
+            if col_index < 0 or col_index >= len(self.current_columns):
+                return
+            
+            column_name = self.current_columns[col_index]
+            
+            # Get the row data
+            row_index = int(self.results_tree.item(row_id, "text")) - 1
+            if row_index < 0 or row_index >= len(self.current_results):
+                return
+            
+            # Get cell value
+            cell_value = self.current_results[row_index].get(column_name, "")
+            
+            # Store selected cell info
+            self.selected_cell_row = row_index
+            self.selected_cell_column = column_name
+            self.selected_cell_value = cell_value
+
     def on_results_cell_double_click(self, event):
-        """Handle double-click on results table cell to copy value"""
+        """Handle double-click on results table cell to show popover"""
+        # First ensure cell is selected by calling the selection handler
+        self.on_results_cell_click_select_only(event)
+        
         if self.selected_cell_value is not None:
-            # Copy to clipboard
-            self.clipboard_clear()
-            self.clipboard_append(str(self.selected_cell_value))
-            
-            # Show confirmation
-            self.status_label.configure(
-                text=f"Copied to clipboard: {self.selected_cell_column}"
-            )
-            
-            # Flash the status bar
-            self.after(2000, lambda: self.status_label.configure(text="Ready"))
+            # Show the cell value popover next to the clicked cell
+            self.show_cell_popover(event)
     
     def on_results_right_click(self, event):
         """Handle right-click on results table cell - show context menu"""
@@ -680,6 +729,185 @@ class NeuronDBApp(ctk.CTk):
             self.status_label.configure(text=f"✓ Copied row {self.selected_cell_row + 1}")
             self.after(2000, lambda: self.status_label.configure(text="Ready"))
     
+    def show_cell_popover(self, event):
+        """Show a popover next to the clicked cell"""
+        if self.selected_cell_value is None:
+            return
+        
+        # Close any existing popover
+        if hasattr(self, 'cell_popover') and self.cell_popover:
+            self.cell_popover.destroy()
+        
+        # Get the bounding box of the clicked cell
+        row_id = self.results_tree.identify_row(event.y)
+        column_id = self.results_tree.identify_column(event.x)
+        
+        if not row_id or not column_id:
+            return
+        
+        # Get cell position relative to the treeview
+        cell_bbox = self.results_tree.bbox(row_id, column_id)
+        if not cell_bbox:
+            return
+        
+        cell_x, cell_y, cell_width, cell_height = cell_bbox
+        
+        # Convert to screen coordinates
+        tree_x = self.results_tree.winfo_rootx()
+        tree_y = self.results_tree.winfo_rooty()
+        
+        # Position popover to the right of the cell
+        popover_x = tree_x + cell_x + cell_width + 10
+        popover_y = tree_y + cell_y
+        
+        # Create popover window
+        self.cell_popover = tk.Toplevel(self)
+        self.cell_popover.wm_overrideredirect(True)  # Remove window decorations
+        self.cell_popover.configure(bg=theme_manager.get_color("background.main"))
+        
+        # Set initial size
+        popover_width = 350
+        popover_height = 250  # Increased height to ensure buttons are visible
+        
+        # Check screen bounds and adjust position
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        
+        # Adjust horizontal position if it would go off screen
+        if popover_x + popover_width > screen_width:
+            popover_x = tree_x + cell_x - popover_width - 10  # Position to the left instead
+        
+        # Adjust vertical position if it would go off screen
+        if popover_y + popover_height > screen_height:
+            popover_y = tree_y + cell_y + cell_height - popover_height
+        
+        # Ensure popover doesn't go above screen or too far left
+        if popover_y < 0:
+            popover_y = 10
+        if popover_x < 0:
+            popover_x = 10
+        
+        self.cell_popover.geometry(f"{popover_width}x{popover_height}+{popover_x}+{popover_y}")
+        
+        # Create main frame with border
+        main_frame = ctk.CTkFrame(
+            self.cell_popover,
+            fg_color=theme_manager.get_color("card"),
+            border_width=2,
+            border_color=theme_manager.get_color("accent.main")
+        )
+        main_frame.pack(fill="both", expand=True, padx=2, pady=2)
+        
+        # Header with column name and close button
+        header_frame = ctk.CTkFrame(main_frame, fg_color=theme_manager.get_color("buttons.primary_bg"))
+        header_frame.pack(fill="x", padx=5, pady=5)
+        
+        header_label = ctk.CTkLabel(
+            header_frame,
+            text=f"📊 {self.selected_cell_column} (Row {self.selected_cell_row + 1})",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color=theme_manager.get_color("buttons.primary_text")
+        )
+        header_label.pack(side="left", padx=8, pady=4)
+        
+        close_btn = ctk.CTkButton(
+            header_frame,
+            text="✕",
+            width=20,
+            height=20,
+            command=self.close_cell_popover,
+            fg_color="transparent",
+            hover_color=theme_manager.get_color("button.hoverBackground"),
+            text_color=theme_manager.get_color("buttons.primary_text")
+        )
+        close_btn.pack(side="right", padx=4, pady=2)
+        
+        # Content area with scrollable text
+        content_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True, padx=5, pady=(0, 5))
+        
+        # Text widget for content
+        text_widget = tk.Text(
+            content_frame,
+            wrap="word",
+            bg=theme_manager.get_color("editor.background"),
+            fg=theme_manager.get_color("text.primary"),
+            font=("Consolas", 10),
+            padx=8,
+            pady=8,
+            height=6,  # Reduced height to make room for buttons
+            relief="flat",
+            borderwidth=0
+        )
+        text_widget.pack(side="left", fill="both", expand=True)
+        
+        # Scrollbar
+        scrollbar = ttk.Scrollbar(content_frame, orient="vertical", command=text_widget.yview)
+        scrollbar.pack(side="right", fill="y")
+        text_widget.configure(yscrollcommand=scrollbar.set)
+        
+        # Insert the cell value
+        text_widget.insert("1.0", str(self.selected_cell_value))
+        text_widget.configure(state="disabled")
+        
+        # Bottom buttons
+        button_frame = ctk.CTkFrame(main_frame, fg_color=theme_manager.get_color("sidebar.background"), height=40)
+        button_frame.pack(fill="x", padx=5, pady=5)
+        button_frame.pack_propagate(False)  # Maintain fixed height
+        
+        copy_btn = ctk.CTkButton(
+            button_frame,
+            text="📋 Copy",
+            command=self.copy_cell_value_and_close,
+            fg_color=theme_manager.get_color("buttons.primary_bg"),
+            hover_color=theme_manager.get_color("buttons.primary_hover"),
+            text_color=theme_manager.get_color("buttons.primary_text"),
+            width=90,
+            height=30,
+            font=ctk.CTkFont(size=11)
+        )
+        copy_btn.pack(side="left", padx=5, pady=5)
+        
+        view_full_btn = ctk.CTkButton(
+            button_frame,
+            text="🔍 View Full",
+            command=self.open_full_cell_dialog,
+            fg_color=theme_manager.get_color("button.background"),
+            hover_color=theme_manager.get_color("button.hoverBackground"),
+            text_color=theme_manager.get_color("text.primary"),
+            width=90,
+            height=30,
+            font=ctk.CTkFont(size=11)
+        )
+        view_full_btn.pack(side="left", padx=5, pady=5)
+        
+        # Make popover closable by clicking outside
+        self.cell_popover.bind("<FocusOut>", lambda e: self.close_cell_popover())
+        self.cell_popover.focus_set()
+        
+        # Close on Escape key
+        self.cell_popover.bind("<Escape>", lambda e: self.close_cell_popover())
+    
+    def close_cell_popover(self):
+        """Close the cell popover"""
+        if hasattr(self, 'cell_popover') and self.cell_popover:
+            self.cell_popover.destroy()
+            self.cell_popover = None
+    
+    def copy_cell_value_and_close(self):
+        """Copy cell value to clipboard and close popover"""
+        if self.selected_cell_value is not None:
+            self.clipboard_clear()
+            self.clipboard_append(str(self.selected_cell_value))
+            self.status_label.configure(text=f"✓ Copied: {self.selected_cell_column}")
+            self.after(2000, lambda: self.status_label.configure(text="Ready"))
+        self.close_cell_popover()
+    
+    def open_full_cell_dialog(self):
+        """Open the full cell value dialog and close popover"""
+        self.close_cell_popover()
+        self.view_full_cell_value()
+
     def view_full_cell_value(self):
         """Show the full cell value in a dialog"""
         if self.selected_cell_value is None:

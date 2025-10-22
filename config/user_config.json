@@ -1,4 +1,5 @@
 {
+  "selected_theme": "projectnest-default",
   "window_size": "1400x900",
   "window_maximized": false,
   "default_host": "localhost",
@@ -11,7 +12,7 @@
   "ai_enabled": true,
   "ai_model": "gemini-2.0-flash-exp",
   "ai_max_history": 20,
-  "terminal_font_size": 11,
+  "terminal_font_size": 15,
   "terminal_font_family": "Consolas",
   "terminal_history_size": 100,
   "show_line_numbers": true,

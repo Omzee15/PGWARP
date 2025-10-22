@@ -15,6 +15,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 from utils.theme_manager import theme_manager
+from utils.config_manager import config_manager
 
 class QueryPanel(ctk.CTkFrame):
     """Query panel with SQL editor and AI assistant"""
@@ -74,7 +75,7 @@ class QueryPanel(ctk.CTkFrame):
         self.grid_rowconfigure(1, weight=1)  # Query editor
         
         # Top toolbar
-        toolbar_frame = ctk.CTkFrame(self, height=60, fg_color=theme_manager.get_color("background.secondary"), corner_radius=8)
+        toolbar_frame = ctk.CTkFrame(self, height=60, fg_color=theme_manager.get_color("card"), corner_radius=8)
         toolbar_frame.grid(row=0, column=0, sticky="ew", padx=8, pady=8)
         toolbar_frame.grid_columnconfigure(3, weight=1)
         
@@ -85,9 +86,9 @@ class QueryPanel(ctk.CTkFrame):
             command=self.execute_all_query,
             width=45,
             height=36,
-            fg_color=theme_manager.get_color("buttons.primary_bg"),
-            hover_color=theme_manager.get_color("buttons.primary_hover"),
-            text_color=theme_manager.get_color("buttons.primary_text"),
+            fg_color=theme_manager.get_color("primary"),
+            hover_color=theme_manager.get_color("primary"),
+            text_color=theme_manager.get_color("primaryForeground"),
             font=ctk.CTkFont(size=18, weight="bold"),
             corner_radius=6
         )
@@ -123,7 +124,7 @@ class QueryPanel(ctk.CTkFrame):
         self.clear_btn.grid(row=0, column=2, padx=8, pady=12)
         
         # AI chat frame
-        ai_frame = ctk.CTkFrame(toolbar_frame, fg_color=theme_manager.get_color("background.main"), corner_radius=8)
+        ai_frame = ctk.CTkFrame(toolbar_frame, fg_color=theme_manager.get_color("background"), corner_radius=8)
         ai_frame.grid(row=0, column=3, sticky="ew", padx=15, pady=8)
         ai_frame.grid_columnconfigure(0, weight=1)
         
@@ -133,10 +134,10 @@ class QueryPanel(ctk.CTkFrame):
             placeholder_text="Ask AI to generate a query...",
             height=36,
             font=ctk.CTkFont(size=12),
-            fg_color=theme_manager.get_color("editor.background"),
-            text_color=theme_manager.get_color("text.primary"),
-            placeholder_text_color=theme_manager.get_color("text.secondary"),
-            border_color=theme_manager.get_color("accent.main"),
+            fg_color=theme_manager.get_color("input"),
+            text_color=theme_manager.get_color("foreground"),
+            placeholder_text_color=theme_manager.get_color("mutedForeground"),
+            border_color=theme_manager.get_color("border"),
             corner_radius=6
         )
         self.ai_entry.grid(row=0, column=0, sticky="ew", padx=8, pady=8)
@@ -179,9 +180,9 @@ class QueryPanel(ctk.CTkFrame):
         # Line numbers widget
         self.line_numbers = tk.Text(
             editor_frame,
-            font=("Consolas", 13),
-            bg=theme_manager.get_color("background.secondary"),
-            fg=theme_manager.get_color("text.secondary"),
+            font=(config_manager.config.terminal_font_family, config_manager.config.terminal_font_size),
+            bg=theme_manager.get_color("card"),
+            fg=theme_manager.get_color("mutedForeground"),
             width=4,
             state="disabled",
             relief=tk.FLAT,
@@ -196,20 +197,20 @@ class QueryPanel(ctk.CTkFrame):
         # Query text area
         self.query_text = tk.Text(
             editor_frame,
-            font=("Consolas", 13),
-            bg=theme_manager.get_color("background.main"),
-            fg=theme_manager.get_color("text.primary"),
-            insertbackground=theme_manager.get_color("accent.main"),
-            selectbackground=theme_manager.get_color("accent.main"),
-            selectforeground=theme_manager.get_color("buttons.primary_text"),
+            font=(config_manager.config.terminal_font_family, config_manager.config.terminal_font_size),
+            bg=theme_manager.get_color("background"),
+            fg=theme_manager.get_color("foreground"),
+            insertbackground=theme_manager.get_color("primary"),
+            selectbackground=theme_manager.get_color("primary"),
+            selectforeground=theme_manager.get_color("primaryForeground"),
             wrap=tk.NONE,
             undo=True,
             maxundo=50,
             relief=tk.SOLID,
             borderwidth=1,
             highlightthickness=1,
-            highlightcolor=theme_manager.get_color("accent.main"),
-            highlightbackground=theme_manager.get_color("background.secondary"),
+            highlightcolor=theme_manager.get_color("border"),
+            highlightbackground=theme_manager.get_color("border"),
             padx=12,
             pady=8
         )
